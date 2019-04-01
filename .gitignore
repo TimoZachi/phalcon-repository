@@ -1,0 +1,8 @@
+vendor/
+environment/
+coverage/
+composer.lock
+phpunit.xml
+phpcs.xml
+.phpcs.cache
+.phpunit.result.cache

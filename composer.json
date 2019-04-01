@@ -1,0 +1,50 @@
+{
+  "name": "tzachi/phalcon-repository",
+  "type": "library",
+  "description": "A library for implementing the repository pattern in projects using the Phalcon PHP Framework",
+  "keywords": [
+    "phalcon",
+    "repository",
+    "repo"
+  ],
+  "license": "BSD-3-Clause",
+  "authors": [
+    {
+      "name": "Timóteo Zachi",
+      "email": "zachi.timo@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^7.2",
+    "ext-phalcon": "^3.4.3"
+  },
+  "require-dev": {
+    "phalcon/ide-stubs": "^3.4.3",
+    "phpstan/phpstan": "^0.11.2",
+    "phpstan/phpstan-deprecation-rules": "^0.11.0",
+    "phpstan/phpstan-phpunit": "^0.11.0",
+    "phpstan/phpstan-strict-rules": "^0.11.0",
+    "phpunit/phpunit": "^8.0",
+    "roave/security-advisories": "dev-master",
+    "tzachi/coding-standard": "1.0.x-dev"
+  },
+  "autoload": {
+    "psr-4": {
+      "TZachi\\PhalconRepository\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "TZachi\\PhalconRepository\\Test\\Unit\\": "tests/unit"
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.0.x-dev"
+    }
+  },
+  "config": {
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
+}
