@@ -60,6 +60,31 @@ $resultSet = $userRepository->findWhere(
 
 ```
 
+## Contributing
+
+Pull requests are most certainly welcome. The code will be validated against the following checks:
+
+* Code is validated against the [Coding Standard](https://github.com/timozachi/coding-standard)
+* A static analysis tool (phpstan) will analyse your code
+* Unit tests must have 100% code coverage (if you create a new feature, please ensure that there are enough tests to cover it)
+* For some features, a functional test is required (soon enough I will push some functional tests for the existent code)
+
+To make things simpler, a Makefile was created. All you have to do is run:
+```shell
+make
+```
+To run specific checks:
+```shell
+make cs-check
+make phpstan-src
+make phpstan-tests
+make test-unit
+```
+
+This will run all available checks against your code and inform you of any failed check
+
+Please note that soon enough a CI tool will be available to do those checks
+
 ## Notes
 
 Please note that there is still a lot to be done in this project, hopefully by then phalcon will have released
