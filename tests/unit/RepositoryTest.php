@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TZachi\PhalconRepository\Test\Unit;
+namespace TZachi\PhalconRepository\Tests\Unit;
 
 use InvalidArgumentException;
 use Phalcon\DiInterface;

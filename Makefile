@@ -6,7 +6,7 @@ PHPSTAN = $(BIN_DIR)/phpstan
 PHPUNIT = $(BIN_DIR)/phpunit
 
 ## Commands
-DOCKER_RUN = docker run --tty --rm --volume="$$PWD":/opt/phalcon-repository phalcon-repository
+DOCKER_RUN = docker run --tty --interactive --rm --volume="$$PWD":/opt/phalcon-repository --workdir=/opt/phalcon-repository phalcon-repository
 
 .PHONY: default analyse test validate phpstan phpstan-src phpstan-tests test test-unit
 
@@ -54,3 +54,13 @@ test: test-unit
 ## Unit tests
 test-unit: vendor phpunit.xml.dist
 	$(DOCKER_RUN) $(PHPUNIT) --configuration=phpunit.xml.dist --testsuite=Unit
+
+############################################################################################
+## HELPERS
+############################################################################################
+
+.PHONY: docker-enter
+
+## Enter inside the docker container
+docker-enter: dev/phalcon-repository.json
+	$(DOCKER_RUN) /bin/bash

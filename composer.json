@@ -26,7 +26,7 @@
     "phpstan/phpstan-strict-rules": "^0.11.0",
     "phpunit/phpunit": "^8.0",
     "roave/security-advisories": "dev-master",
-    "tzachi/coding-standard": "1.0.x-dev"
+    "tzachi/coding-standard": "^0.1.0"
   },
   "autoload": {
     "psr-4": {
@@ -35,7 +35,8 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "TZachi\\PhalconRepository\\Test\\Unit\\": "tests/unit"
+      "TZachi\\PhalconRepository\\Tests\\Unit\\": "tests/unit",
+      "TZachi\\PhalconRepository\\Tests\\Mock\\": "tests/mock"
     }
   },
   "extra": {

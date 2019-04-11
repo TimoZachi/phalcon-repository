@@ -60,6 +60,76 @@ $resultSet = $userRepository->findWhere(
 
 ```
 
+To set up the repository pattern inside a phalcon project, you can use the `RepositoryFactory` class:
+
+```php
+
+use Phalcon\Annotations\AdapterInterface as AnnotationsAdapterInterface;
+use TZachi\PhalconRepository\RepositoryFactory;
+
+// Set the repository service as a shared service
+$di->setShared(
+    'repository',
+    function (): RepositoryFactory {
+        /**
+         * @var AnnotationsAdapterInterface $annotations
+         */
+        $annotations = $this->get('annotations');
+
+        // The repository factory reads the annotations of the Model class to determine which repository it should use,
+        // that's why it needs the annotations parser. It falls back to the default repository class if one wasn't
+        // specified in the model
+        return new RepositoryFactory($annotations);
+    }
+);
+
+```
+
+Now if you want a specific Repository for a Specific model, first create the repository:
+
+```php
+
+namespace MyApp\Repository;
+
+use TZachi\PhalconRepository\Repository;
+
+class UserRepository extends Repository
+{
+    ...
+
+```
+
+And then, in the model, add the annotation to specify which class should be its repository:
+
+```php
+namespace App\Model;
+
+use Phalcon\Mvc\Model;
+
+/**
+ * @Repository(MyApp\Repository\UserRepository);
+ */
+class User extends Model
+{
+    ...
+```
+
+Now anywhere in your project you can easily get the model's repository:
+
+```php
+public function userAction($id): void
+{
+    /**
+     * @var \MyApp\Repository\UserRepository $user
+     */
+    $userRepository = $this->repository->get(\MyApp\Model\User::class);
+    /**
+     * @var \MyApp\Model\User $user
+     */
+    $user = $userRepository->find($id);
+    ...
+```
+
 ## Contributing
 
 Pull requests are most certainly welcome. The code will be validated against the following checks:

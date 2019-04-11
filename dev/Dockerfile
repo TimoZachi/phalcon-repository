@@ -4,11 +4,9 @@ FROM php:${PHP_VERSION}-cli-stretch
 # Remove default html folder
 RUN rm -rf /var/www/html
 
-# Update apt-get
-RUN apt-get update -yqq
-
 # Istall curl and git
-RUN apt-get install -y curl git
+RUN apt-get update -yqq \
+    && apt-get install --yes --no-install-recommends apt-utils curl git sudo
 
 # Create ini file from defaults
 ARG PHP_INI_ENVIRONMENT=development
@@ -19,8 +17,8 @@ RUN cp "/usr/local/etc/php/php.ini-${PHP_INI_ENVIRONMENT}" /usr/local/etc/php/ph
 ##########################################################################################
 
 # zip
-RUN apt-get install -y libzip-dev \
-    && apt-get install unzip \
+RUN apt-get update -yqq \
+    && apt-get install --yes --no-install-recommends libzip-dev unzip \
     && docker-php-ext-install zip
 
 # mysql
@@ -51,15 +49,10 @@ RUN cd /tmp \
 
 ARG PGID=1000
 ARG PUID=1000
-# Create a user for composer
+# Create a user for composer and make it sudoable without password prompt
 RUN groupadd --gid=${PGID} docker \
-    && useradd --gid=${PGID} --uid=${PUID} --shell=/bin/bash --create-home docker
-
-# @todo Make the user rootable (via sudo)
-
-# Change folder owner to docker user
-RUN mkdir /opt/phalcon-repository \
-    && chown docker:docker -R /opt/phalcon-repository
+    && useradd --gid=${PGID} --uid=${PUID} --shell=/bin/bash --create-home docker \
+    && echo "docker ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 ##########################################################################################
 ## COMPOSER
@@ -73,10 +66,8 @@ ENV PATH="${PATH}:/home/docker/.composer/vendor/bin"
 # Switch to user docker to install composer packages
 USER docker
 
-# Faster composer install inside the container
-RUN composer global require hirak/prestissimo \
-    && composer global require phpunit/phpunit \
-    && composer global require phalcon/devtools \
+# Faster composer install inside the container with hirak/prestissimo plugin
+RUN composer global require --no-suggest --no-interaction --no-progress hirak/prestissimo phalcon/devtools \
     && mv /home/docker/.composer/vendor/bin/phalcon.php /home/docker/.composer/vendor/bin/phalcon
 
 # Switch back to root
@@ -93,9 +84,6 @@ RUN apt-get clean \
 ##########################################################################################
 ## FINAL SETUP
 ##########################################################################################
-
-# Change workdir
-WORKDIR /opt/phalcon-repository
 
 # Set the default user to docker
 USER docker

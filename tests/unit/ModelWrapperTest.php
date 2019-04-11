@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace TZachi\PhalconRepository\Test\Unit;
+namespace TZachi\PhalconRepository\Tests\Unit;
 
 use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
@@ -10,7 +10,7 @@ use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\ResultsetInterface;
 use PHPUnit\Framework\TestCase;
 use TZachi\PhalconRepository\ModelWrapper;
-use function get_class;
+use TZachi\PhalconRepository\Tests\Mock\Model\Wrapper;
 
 class ModelWrapperTest extends TestCase
 {
@@ -19,7 +19,7 @@ class ModelWrapperTest extends TestCase
      */
     public function constructorShouldAssignModelName(): void
     {
-        $modelClass = Model::class;
+        $modelClass = Wrapper::class;
 
         $modelWrapper = new ModelWrapper($modelClass);
 
@@ -35,46 +35,11 @@ class ModelWrapperTest extends TestCase
      */
     public function allMethodsInWrapperShouldReturnSameAsModel(string $methodName, array $args, $returnValue): void
     {
-        $model = new class()
-        {
-            /**
-             * @var string
-             */
-            public static $methodName;
+        Wrapper::$methodName  = $methodName;
+        Wrapper::$args        = $args;
+        Wrapper::$returnValue = $returnValue;
 
-            /**
-             * @var mixed[]
-             */
-            public static $args;
-
-            /**
-             * @var mixed
-             */
-            public static $returnValue;
-
-            /**
-             * @param mixed[] $arguments
-             *
-             * @return mixed
-             */
-            public static function __callStatic(string $name, array $arguments)
-            {
-                if ($name === static::$methodName) {
-                    TestCase::assertSame(static::$args, $arguments);
-
-                    return static::$returnValue;
-                }
-
-                return null;
-            }
-        };
-        $class = get_class($model);
-
-        $class::$methodName  = $methodName;
-        $class::$args        = $args;
-        $class::$returnValue = $returnValue;
-
-        $modelWrapper = new ModelWrapper(get_class($model));
+        $modelWrapper = new ModelWrapper(Wrapper::class);
 
         static::assertSame($returnValue, $modelWrapper->{$methodName}(...$args));
     }
