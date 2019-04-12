@@ -8,7 +8,7 @@ PHPUNIT = $(BIN_DIR)/phpunit
 ## Commands
 DOCKER_RUN = docker run --tty --interactive --rm --volume="$$PWD":/opt/phalcon-repository --workdir=/opt/phalcon-repository phalcon-repository
 
-.PHONY: default analyse test validate phpstan phpstan-src phpstan-tests test test-unit
+.PHONY: default analyse test validate phpstan phpstan-src phpstan-tests test test-unit test-functional
 
 ## Default command, runs all checks (use `make`)
 default: analyse test
@@ -38,7 +38,7 @@ phpstan-src: vendor phpstan-src.neon.dist
 
 ## PHP static analysis for tests
 phpstan-tests: vendor phpstan-tests.neon.dist
-	$(DOCKER_RUN) $(PHPSTAN) analyse --level=max --configuration=phpstan-tests.neon.dist tests/unit
+	$(DOCKER_RUN) $(PHPSTAN) analyse --level=max --configuration=phpstan-tests.neon.dist tests
 
 ## Code sniffing (cs check)
 cs-check: vendor
@@ -49,11 +49,15 @@ cs-fix: vendor
 	$(PHPCBF)
 
 ## All tests
-test: test-unit
+test: test-unit test-functional
 
 ## Unit tests
 test-unit: vendor phpunit.xml.dist
 	$(DOCKER_RUN) $(PHPUNIT) --configuration=phpunit.xml.dist --testsuite=Unit
+
+## Functional tests
+test-functional: vendor phpunit.xml.dist
+	$(DOCKER_RUN) $(PHPUNIT) --configuration=phpunit.xml.dist --testsuite=Functional
 
 ############################################################################################
 ## HELPERS

@@ -19,6 +19,7 @@
     "ext-phalcon": "^3.4.3"
   },
   "require-dev": {
+    "ext-pdo": "*",
     "phalcon/ide-stubs": "^3.4.3",
     "phpstan/phpstan": "^0.11.2",
     "phpstan/phpstan-deprecation-rules": "^0.11.0",
@@ -36,6 +37,7 @@
   "autoload-dev": {
     "psr-4": {
       "TZachi\\PhalconRepository\\Tests\\Unit\\": "tests/unit",
+      "TZachi\\PhalconRepository\\Tests\\Functional\\": "tests/functional",
       "TZachi\\PhalconRepository\\Tests\\Mock\\": "tests/mock"
     }
   },
