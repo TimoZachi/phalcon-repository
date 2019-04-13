@@ -69,7 +69,7 @@ use TZachi\PhalconRepository\RepositoryFactory;
 
 // Set the repository service as a shared service
 $di->setShared(
-    'repository',
+    'repositoryManager',
     function (): RepositoryFactory {
         /**
          * @var AnnotationsAdapterInterface $annotations
@@ -85,7 +85,7 @@ $di->setShared(
 
 ```
 
-Now if you want a specific Repository for a Specific model, first create the repository:
+Now if you want a specific Repository for a specific Model, first create the repository:
 
 ```php
 
@@ -102,8 +102,9 @@ class UserRepository extends Repository
 And then, in the model, add the annotation to specify which class should be its repository:
 
 ```php
-namespace App\Model;
+namespace MyApp\Model;
 
+use MyApp\Model\User;
 use Phalcon\Mvc\Model;
 
 /**
@@ -111,6 +112,13 @@ use Phalcon\Mvc\Model;
  */
 class User extends Model
 {
+    /**
+     * @param mixed $id
+     */
+    public function findLastUserCreated($id): User
+    {
+        ...
+    }
     ...
 ```
 
@@ -120,13 +128,10 @@ Now anywhere in your project you can easily get the model's repository:
 public function userAction($id): void
 {
     /**
-     * @var \MyApp\Repository\UserRepository $user
+     * @var \MyApp\Repository\UserRepository $userRepository
      */
-    $userRepository = $this->repository->get(\MyApp\Model\User::class);
-    /**
-     * @var \MyApp\Model\User $user
-     */
-    $user = $userRepository->find($id);
+    $userRepository = $this->repositoryManager->get(\MyApp\Model\User::class);
+    $user = $userRepository->findLastUserCreated($id);
     ...
 ```
 
@@ -137,13 +142,15 @@ Pull requests are most certainly welcome. The code will be validated against the
 * Code is validated against the [Coding Standard](https://github.com/timozachi/coding-standard)
 * A static analysis tool (phpstan) will analyse your code
 * Unit tests must have 100% code coverage (if you create a new feature, please ensure that there are enough tests to cover it)
-* For some features, a functional test is required (soon enough I will push some functional tests for the existent code)
+* For some features, a functional test is required 
 
 To make things simpler, a Makefile was created. All you have to do is run:
 ```shell
 make
 ```
-To run specific checks:
+The `make` command will run all available checks against your code and inform you if any of them fails
+
+If you want to run specific checks:
 ```shell
 make cs-check
 make phpstan-src
@@ -151,9 +158,7 @@ make phpstan-tests
 make test-unit
 ```
 
-This will run all available checks against your code and inform you of any failed check
-
-Please note that soon enough a CI tool will be available to do those checks
+Please note that soon enough a CI tool will handle those checks automatically
 
 ## Notes
 
