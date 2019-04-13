@@ -122,7 +122,7 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findByReturnsCorrectResultSet(): void
+    public function findByShouldReturnCorrectResultSet(): void
     {
         $emails    = [
             $this->users[12]->email,
@@ -137,7 +137,7 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findWhereReturnsCorrectResultSetWithComplexCondition(): void
+    public function findWhereShouldReturnCorrectResultSetWithComplexCondition(): void
     {
         $resultSet = $this->repository->findWhere(
             [
