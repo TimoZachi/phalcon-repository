@@ -20,6 +20,7 @@
   },
   "require-dev": {
     "ext-pdo": "*",
+    "fzaninotto/faker": "^1.8",
     "phalcon/ide-stubs": "^3.4.3",
     "phpstan/phpstan": "^0.11.2",
     "phpstan/phpstan-deprecation-rules": "^0.11.0",

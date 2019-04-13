@@ -8,7 +8,7 @@ use InvalidArgumentException;
 use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
-use Phalcon\Mvc\Model\ResultsetInterface;
+use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use function array_keys;
 use function array_merge;
 use function count;
@@ -90,7 +90,7 @@ class Repository
      * @param mixed[]  $where
      * @param string[] $orderBy
      */
-    public function findWhere(array $where, array $orderBy = [], int $limit = 0, int $offset = 0): ResultsetInterface
+    public function findWhere(array $where, array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
     {
         $parameters = array_merge($this->whereToParameters($where), $this->orderByToParameters($orderBy));
         if ($limit > 0) {
@@ -113,7 +113,7 @@ class Repository
         array $orderBy = [],
         int $limit = 0,
         int $offset = 0
-    ): ResultsetInterface {
+    ): SimpleResultset {
         return $this->findWhere([$field => $value], $orderBy, $limit, $offset);
     }
 

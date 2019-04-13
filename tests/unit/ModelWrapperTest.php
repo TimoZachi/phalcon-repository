@@ -7,7 +7,7 @@ namespace TZachi\PhalconRepository\Tests\Unit;
 use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
-use Phalcon\Mvc\Model\ResultsetInterface;
+use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use PHPUnit\Framework\TestCase;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Tests\Mock\Model\Wrapper;
@@ -70,7 +70,7 @@ class ModelWrapperTest extends TestCase
             [
                 'methodName' => 'find',
                 'args' => $defaultArgs,
-                'returnData' => $this->createMock(ResultsetInterface::class),
+                'returnData' => $this->createMock(SimpleResultset::class),
             ],
             [
                 'methodName' => 'query',

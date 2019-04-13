@@ -7,7 +7,7 @@ namespace TZachi\PhalconRepository;
 use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
-use Phalcon\Mvc\Model\ResultsetInterface;
+use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 
 /**
  * Wrapper class for calling \Phalcon\Mvc\Model's static methods as instance methods without getting PHP warnings
@@ -32,7 +32,7 @@ class ModelWrapper
     /**
      * @param mixed $parameters
      */
-    public function find($parameters = null): ResultsetInterface
+    public function find($parameters = null): SimpleResultset
     {
         return $this->modelName::find($parameters);
     }

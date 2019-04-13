@@ -8,7 +8,7 @@ use InvalidArgumentException;
 use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
-use Phalcon\Mvc\Model\ResultsetInterface;
+use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use TZachi\PhalconRepository\ModelWrapper;
@@ -173,9 +173,9 @@ final class RepositoryTest extends TestCase
         int $offset = 0
     ): void {
         /**
-         * @var ResultsetInterface|MockObject $model
+         * @var SimpleResultset|MockObject $model
          */
-        $resultSet = $this->createMock(ResultsetInterface::class);
+        $resultSet = $this->createMock(SimpleResultset::class);
 
         $this->modelWrapper->expects(self::once())
             ->method('find')
