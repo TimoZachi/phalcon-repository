@@ -8,34 +8,47 @@ use Faker\Factory;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
+use TZachi\PhalconRepository\Tests\Mock\Model\Payment;
 use TZachi\PhalconRepository\Tests\Mock\Model\User;
 use function current;
 use function next;
 use function range;
 use function reset;
 
+/**
+ * @coversDefaultClass Repository
+ */
 final class RepositoryTest extends TestCase
 {
     /**
      * @var User[] $users
      */
-    private $users;
+    private static $users;
+
+    /**
+     * @var Payment[] $users
+     */
+    private static $payments;
 
     /**
      * @var Repository
      */
-    private $repository;
+    private $userRepository;
 
-    public function setUp(): void
+    /**
+     * @var Repository
+     */
+    private $paymentRepository;
+
+    /**
+     * @beforeClass
+     */
+    public static function setUpDatabase(): void
     {
-        parent::setUp();
-
-        if ($this->users !== null) {
-            return;
-        }
-
         self::setUpDi();
+
         self::resetTable('users');
+        self::resetTable('payments');
 
         $faker = Factory::create();
 
@@ -47,10 +60,30 @@ final class RepositoryTest extends TestCase
             $user->createdAt = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
             $user->save();
 
-            $this->users[$i] = $user;
+            self::$users[$i] = $user;
         }
 
-        $this->repository = new Repository(new ModelWrapper(User::class));
+        for ($i = 1; $i < 10; $i++) {
+            $payment            = new Payment();
+            $payment->id        = $i;
+            $payment->value     = 1.15 * $i;
+            $payment->count     = $i % 5;
+            $payment->createdAt = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
+            $payment->save();
+
+            self::$payments[$i] = $payment;
+        }
+    }
+
+    /**
+     * @before
+     */
+    public function setUpDependencies(): void
+    {
+        self::resetModelsMetadata();
+
+        $this->userRepository    = new Repository(new ModelWrapper(User::class));
+        $this->paymentRepository = new Repository(new ModelWrapper(Payment::class));
     }
 
     /**
@@ -58,9 +91,9 @@ final class RepositoryTest extends TestCase
      */
     public function findFirstShouldReturnModel(): void
     {
-        $user = $this->repository->findFirst(1);
+        $user = $this->userRepository->findFirst(1);
         self::assertInstanceOf(User::class, $user);
-        self::assertSame($this->users[1]->toArray(), $user->toArray());
+        self::assertSame(self::$users[1]->toArray(), $user->toArray());
     }
 
     /**
@@ -68,7 +101,7 @@ final class RepositoryTest extends TestCase
      */
     public function findFirstShouldReturnNullWhenIdNotFound(): void
     {
-        self::assertNull($this->repository->findFirst(100));
+        self::assertNull($this->userRepository->findFirst(100));
     }
 
     /**
@@ -76,13 +109,13 @@ final class RepositoryTest extends TestCase
      */
     public function findFirstByShouldReturnModel(): void
     {
-        $user = $this->repository->findFirstBy('email', $this->users[10]->email);
+        $user = $this->userRepository->findFirstBy('email', self::$users[10]->email);
         self::assertInstanceOf(User::class, $user);
-        self::assertSame($this->users[10]->toArray(), $user->toArray());
+        self::assertSame(self::$users[10]->toArray(), $user->toArray());
 
-        $user = $this->repository->findFirstBy('id', [3, 4, 5], ['id' => 'DESC']);
+        $user = $this->userRepository->findFirstBy('id', [3, 4, 5], ['id' => 'DESC']);
         self::assertInstanceOf(User::class, $user);
-        self::assertSame($this->users[5]->toArray(), $user->toArray());
+        self::assertSame(self::$users[5]->toArray(), $user->toArray());
     }
 
     /**
@@ -92,17 +125,17 @@ final class RepositoryTest extends TestCase
     {
         $conditions = [
             '@type' => Repository::TYPE_OR,
-            'name' => $this->users[26]->name,
-            'email' => $this->users[28]->email,
+            'name' => self::$users[26]->name,
+            'email' => self::$users[28]->email,
         ];
 
-        $user = $this->repository->findFirstWhere($conditions, ['id']);
+        $user = $this->userRepository->findFirstWhere($conditions, ['id']);
         self::assertInstanceOf(User::class, $user);
-        self::assertSame($this->users[26]->toArray(), $user->toArray());
+        self::assertSame(self::$users[26]->toArray(), $user->toArray());
 
-        $user = $this->repository->findFirstWhere($conditions, ['id' => 'DESC']);
+        $user = $this->userRepository->findFirstWhere($conditions, ['id' => 'DESC']);
         self::assertInstanceOf(User::class, $user);
-        self::assertSame($this->users[28]->toArray(), $user->toArray());
+        self::assertSame(self::$users[28]->toArray(), $user->toArray());
     }
 
     /**
@@ -112,11 +145,19 @@ final class RepositoryTest extends TestCase
     {
         $conditions = [
             '@type' => Repository::TYPE_AND,
-            'name' => $this->users[26]->name,
-            'email' => $this->users[28]->email,
+            'name' => self::$users[26]->name,
+            'email' => self::$users[28]->email,
         ];
 
-        self::assertNull($this->repository->findFirstWhere($conditions));
+        self::assertNull($this->userRepository->findFirstWhere($conditions));
+    }
+
+    /**
+     * @test
+     */
+    public function findAllShouldReturnAllRows(): void
+    {
+        $this->compareResultSet($this->userRepository->findAll(), self::$users);
     }
 
     /**
@@ -125,11 +166,11 @@ final class RepositoryTest extends TestCase
     public function findByShouldReturnCorrectResultSet(): void
     {
         $emails    = [
-            $this->users[12]->email,
-            $this->users[22]->email,
-            $this->users[25]->email,
+            self::$users[12]->email,
+            self::$users[22]->email,
+            self::$users[25]->email,
         ];
-        $resultSet = $this->repository->findBy('email', $emails, ['id' => 'DESC'], 2);
+        $resultSet = $this->userRepository->findBy('email', $emails, ['id' => 'DESC'], 2);
 
         $this->compareResultSet($resultSet, $this->getUsersSlice([25, 22]));
     }
@@ -139,7 +180,7 @@ final class RepositoryTest extends TestCase
      */
     public function findWhereShouldReturnCorrectResultSetWithComplexCondition(): void
     {
-        $resultSet = $this->repository->findWhere(
+        $resultSet = $this->userRepository->findWhere(
             [
                 '@type' => Repository::TYPE_OR,
                 [
@@ -147,7 +188,7 @@ final class RepositoryTest extends TestCase
                     'id' => [15, 21],
                 ],
                 'id' => range(5, 9),
-                'name' => $this->users[11]->name,
+                'name' => self::$users[11]->name,
             ],
             ['id' => 'DESC'],
             7,
@@ -155,6 +196,41 @@ final class RepositoryTest extends TestCase
         );
 
         $this->compareResultSet($resultSet, $this->getUsersSlice([17, 16, 15, 11, 9, 8, 7]));
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldReturnNumberOfRows(): void
+    {
+        self::assertSame(30, $this->userRepository->count());
+        self::assertSame(
+            10,
+            $this->userRepository->count(null, ['id' => [11, 20], '@operator' => 'BETWEEN'])
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function sumShouldReturnSumOnColumn(): void
+    {
+        self::assertSame(20., $this->paymentRepository->sum('count'));
+        self::assertSame(
+            6.9,
+            $this->paymentRepository->sum('value', ['id' => [1, 3], '@operator' => 'BETWEEN'])
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function averageShouldReturnAverageOnColumn(): void
+    {
+        self::assertSame(
+            8.05,
+            $this->paymentRepository->average('value', ['id' => [5, 9], '@operator' => 'BETWEEN'])
+        );
     }
 
     /**
@@ -166,7 +242,7 @@ final class RepositoryTest extends TestCase
     {
         $slice = [];
         foreach ($ids as $id) {
-            $slice[$id] = $this->users[$id];
+            $slice[$id] = self::$users[$id];
         }
 
         return $slice;

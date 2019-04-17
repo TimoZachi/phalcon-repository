@@ -35,7 +35,7 @@ abstract class TestCase extends PHPUnitTestCase
     protected static function setUpDi(): void
     {
         if (self::$sharedConnection === null) {
-            self::$sharedConnection = new SqliteDbAdapter(['dbname' => ':memory:']);
+            self::$sharedConnection = new SqliteDbAdapter(['dbname' => __DIR__ . '/database.sqlite']);
         }
 
         if (self::$sharedDi !== null) {
@@ -70,6 +70,21 @@ abstract class TestCase extends PHPUnitTestCase
         self::$sharedDi = $di;
     }
 
+    protected static function resetModelsMetadata(): void
+    {
+        if (self::$sharedDi === null) {
+            throw new RuntimeException(
+                sprintf('Please call %s::setUpDi before calling %s', self::class, __METHOD__)
+            );
+        }
+
+        /**
+         * @var Memory $metadata
+         */
+        $metadata = self::$sharedDi->get('modelsMetadata');
+        $metadata->reset();
+    }
+
     protected static function resetTable(string $tableName): bool
     {
         if (self::$sharedConnection === null) {
@@ -85,21 +100,5 @@ abstract class TestCase extends PHPUnitTestCase
             null,
             require dirname(__DIR__) . '/migrations/' . $tableName . '.php'
         );
-    }
-
-    /**
-     * @before
-     */
-    public function resetModelsMetadata(): void
-    {
-        if (self::$sharedDi === null) {
-            return;
-        }
-
-        /**
-         * @var Memory $metadata
-         */
-        $metadata = self::$sharedDi->get('modelsMetadata');
-        $metadata->reset();
     }
 }
