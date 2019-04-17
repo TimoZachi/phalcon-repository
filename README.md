@@ -95,7 +95,13 @@ use TZachi\PhalconRepository\Repository;
 
 class UserRepository extends Repository
 {
-    ...
+    /**
+     * @param mixed $id
+     */
+    public function findLastUserCreated($id): User
+    {
+        ...
+    }
 
 ```
 
@@ -112,13 +118,6 @@ use Phalcon\Mvc\Model;
  */
 class User extends Model
 {
-    /**
-     * @param mixed $id
-     */
-    public function findLastUserCreated($id): User
-    {
-        ...
-    }
     ...
 ```
 

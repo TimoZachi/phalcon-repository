@@ -77,6 +77,31 @@ class ModelWrapperTest extends TestCase
                 'args' => [$this->createMock(DiInterface::class)],
                 'returnData' => $this->createMock(Criteria::class),
             ],
+            [
+                'methodName' => 'count',
+                'args' => $defaultArgs,
+                'returnData' => 10,
+            ],
+            [
+                'methodName' => 'sum',
+                'args' => $defaultArgs,
+                'returnData' => null,
+            ],
+            [
+                'methodName' => 'sum',
+                'args' => $defaultArgs,
+                'returnData' => '11.4',
+            ],
+            [
+                'methodName' => 'average',
+                'args' => $defaultArgs,
+                'returnData' => null,
+            ],
+            [
+                'methodName' => 'average',
+                'args' => $defaultArgs,
+                'returnData' => '20.42',
+            ],
         ];
     }
 }

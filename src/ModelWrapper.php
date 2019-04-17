@@ -30,25 +30,52 @@ class ModelWrapper
     }
 
     /**
-     * @param mixed $parameters
+     * @param mixed[] $parameters
+     *
+     * @return Model|false
      */
-    public function find($parameters = null): SimpleResultset
+    public function findFirst(?array $parameters = null)
+    {
+        return $this->modelName::findFirst($parameters);
+    }
+
+    /**
+     * @param mixed[] $parameters
+     */
+    public function find(?array $parameters = null): SimpleResultset
     {
         return $this->modelName::find($parameters);
     }
 
     /**
-     * @param mixed $parameters
-     *
-     * @return Model|false
+     * Generates a criteria for custom queries
      */
-    public function findFirst($parameters = null)
-    {
-        return $this->modelName::findFirst($parameters);
-    }
-
     public function query(?DiInterface $dependencyInjector = null): Criteria
     {
         return $this->modelName::query($dependencyInjector);
+    }
+
+    /**
+     * @param mixed[] $parameters
+     */
+    public function count(?array $parameters = null): int
+    {
+        return $this->modelName::count($parameters);
+    }
+
+    /**
+     * @param mixed[] $parameters
+     */
+    public function sum(?array $parameters = null): ?string
+    {
+        return $this->modelName::sum($parameters);
+    }
+
+    /**
+     * @param mixed[] $parameters
+     */
+    public function average(?array $parameters = null): ?string
+    {
+        return $this->modelName::average($parameters);
     }
 }

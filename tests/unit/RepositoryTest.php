@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace TZachi\PhalconRepository\Tests\Unit;
 
 use InvalidArgumentException;
-use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
@@ -34,7 +33,7 @@ final class RepositoryTest extends TestCase
      */
     public function setUpDependencies(): void
     {
-        $this->modelWrapper = $this->createPartialMock(ModelWrapper::class, ['find', 'findFirst', 'query']);
+        $this->modelWrapper = $this->createMock(ModelWrapper::class);
 
         $this->repository = new Repository($this->modelWrapper);
     }
@@ -189,6 +188,32 @@ final class RepositoryTest extends TestCase
     }
 
     /**
+     * @test
+     */
+    public function findAllShouldPassEmptyWhere(): void
+    {
+        /**
+         * @var SimpleResultset|MockObject $model
+         */
+        $resultSet      = $this->createMock(SimpleResultset::class);
+        $expectedParams = [
+            'order' => '[field] ASC, [field2] ASC',
+            'offset' => 20,
+            'limit' => 10,
+        ];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('find')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn($resultSet);
+
+        self::assertSame(
+            $resultSet,
+            $this->repository->findAll(['field', 'field2'], 10, 20)
+        );
+    }
+
+    /**
      * @return mixed[]
      */
     public function findByValidData(): array
@@ -271,20 +296,116 @@ final class RepositoryTest extends TestCase
     public function queryShouldReturnCriteria(): void
     {
         /**
-         * @var DiInterface|MockObject $di
-         */
-        $di = $this->createMock(DiInterface::class);
-        /**
          * @var Criteria|MockObject $di
          */
         $criteria = $this->createMock(Criteria::class);
 
         $this->modelWrapper->expects(self::once())
             ->method('query')
-            ->with(self::identicalTo($di))
             ->willReturn($criteria);
 
-        static::assertSame($criteria, $this->repository->query($di));
+        static::assertSame($criteria, $this->repository->query());
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldNotGetColumnParameterWhenColumnIsNull(): void
+    {
+        $expectedParams = [
+            'conditions' => '[field] = ?0',
+            'bind' => [1],
+        ];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('count')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn(0);
+
+        self::assertSame(0, $this->repository->count(null, ['field' => 1]));
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldGetColumnParameterWhenColumnIsSpecified(): void
+    {
+        $expectedParams = ['column' => 'testColumn'];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('count')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn(0);
+
+        self::assertSame(0, $this->repository->count('testColumn'));
+    }
+
+    /**
+     * @test
+     */
+    public function sumShouldReturnNullWhenNoRowsAreFound(): void
+    {
+        $expectedParams = [
+            'column' => 'testColumn',
+            'conditions' => '[id] = ?0',
+            'bind' => [1],
+        ];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('sum')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn(null);
+
+        self::assertNull($this->repository->sum('testColumn', ['id' => 1]));
+    }
+
+    /**
+     * @test
+     */
+    public function sumShouldReturnCorrectResult(): void
+    {
+        $expectedParams = ['column' => 'testColumn'];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('sum')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn('20.5');
+
+        self::assertSame(20.5, $this->repository->sum('testColumn'));
+    }
+
+    /**
+     * @test
+     */
+    public function averageShouldReturnNullWhenNoRowsAreFound(): void
+    {
+        $expectedParams = [
+            'column' => 'testColumn',
+            'conditions' => '[id] = ?0',
+            'bind' => [1],
+        ];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('average')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn(null);
+
+        self::assertNull($this->repository->average('testColumn', ['id' => 1]));
+    }
+
+    /**
+     * @test
+     */
+    public function averageShouldReturnCorrectResult(): void
+    {
+        $expectedParams = ['column' => 'testColumn'];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('average')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn('10.5');
+
+        self::assertSame(10.5, $this->repository->average('testColumn'));
     }
 
     /**

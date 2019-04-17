@@ -23,7 +23,7 @@ class User extends Model
 
     /**
      * @var string
-     * @Column(type="string", length=255, nullable=false)
+     * @Column(type="string", length=127, nullable=false)
      */
     public $name;
 
@@ -35,7 +35,7 @@ class User extends Model
 
     /**
      * @var string
-     * @Column(type="string", length=127, column="created_at")
+     * @Column(type="string", length=19, column="created_at")
      */
     public $createdAt;
 
