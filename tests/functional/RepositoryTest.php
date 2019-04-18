@@ -10,6 +10,7 @@ use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
 use TZachi\PhalconRepository\Tests\Mock\Model\Payment;
 use TZachi\PhalconRepository\Tests\Mock\Model\User;
+use function array_reduce;
 use function current;
 use function next;
 use function range;
@@ -230,6 +231,56 @@ final class RepositoryTest extends TestCase
         self::assertSame(
             8.05,
             $this->paymentRepository->average('value', ['id' => [5, 9], '@operator' => 'BETWEEN'])
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function minimumShouldReturnMinimumOnColumn(): void
+    {
+        self::assertSame('1.15', $this->paymentRepository->minimum('value'));
+        self::assertSame('0', $this->paymentRepository->minimum('count'));
+
+        $users            = $this->getUsersSlice(range(1, 10));
+        $minimumCreatedAt = array_reduce(
+            $users,
+            static function (?string $carry, User $user): string {
+                if ($carry === null || $user->createdAt < $carry) {
+                    return $user->createdAt;
+                }
+
+                return $carry;
+            }
+        );
+        self::assertSame(
+            $minimumCreatedAt,
+            $this->userRepository->minimum('createdAt', ['id' => [1, 10], '@operator' => 'BETWEEN'])
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function maximumShouldReturnMinimumOnColumn(): void
+    {
+        self::assertSame('10.35', $this->paymentRepository->maximum('value'));
+        self::assertSame('4', $this->paymentRepository->maximum('count'));
+
+        $users            = $this->getUsersSlice(range(8, 21));
+        $maximumCreatedAt = array_reduce(
+            $users,
+            static function (?string $carry, User $user): string {
+                if ($carry === null || $user->createdAt > $carry) {
+                    return $user->createdAt;
+                }
+
+                return $carry;
+            }
+        );
+        self::assertSame(
+            $maximumCreatedAt,
+            $this->userRepository->maximum('createdAt', ['id' => [8, 21], '@operator' => 'BETWEEN'])
         );
     }
 

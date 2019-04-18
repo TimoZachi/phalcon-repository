@@ -78,4 +78,20 @@ class ModelWrapper
     {
         return $this->modelName::average($parameters);
     }
+
+    /**
+     * @param mixed[] $parameters
+     */
+    public function minimum(?array $parameters = null): ?string
+    {
+        return $this->modelName::minimum($parameters);
+    }
+
+    /**
+     * @param mixed[] $parameters
+     */
+    public function maximum(?array $parameters = null): ?string
+    {
+        return $this->modelName::maximum($parameters);
+    }
 }

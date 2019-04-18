@@ -9,7 +9,6 @@ use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use function array_keys;
-use function array_merge;
 use function count;
 use function implode;
 use function in_array;
@@ -52,7 +51,7 @@ class Repository
      */
     public function findFirstWhere(array $where, array $orderBy = []): ?Model
     {
-        $parameters = array_merge($this->whereToParameters($where), $this->orderByToParameters($orderBy));
+        $parameters = $this->whereToParameters($where) + $this->orderByToParameters($orderBy);
 
         $model = $this->modelWrapper->findFirst($parameters);
         if ($model === false) {
@@ -91,7 +90,7 @@ class Repository
      */
     public function findWhere(array $where, array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
     {
-        $parameters = array_merge($this->whereToParameters($where), $this->orderByToParameters($orderBy));
+        $parameters = $this->whereToParameters($where) + $this->orderByToParameters($orderBy);
         if ($limit > 0) {
             $parameters['offset'] = $offset;
             $parameters['limit']  = $limit;
@@ -156,7 +155,7 @@ class Repository
      */
     public function sum(string $column, array $where = []): ?float
     {
-        $parameters = array_merge(['column' => $column], $this->whereToParameters($where));
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
 
         $sum = $this->modelWrapper->sum($parameters);
         if ($sum === null) {
@@ -173,7 +172,7 @@ class Repository
      */
     public function average(string $column, array $where = []): ?float
     {
-        $parameters = array_merge(['column' => $column], $this->whereToParameters($where));
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
 
         $average = $this->modelWrapper->average($parameters);
         if ($average === null) {
@@ -181,6 +180,30 @@ class Repository
         }
 
         return (float) $average;
+    }
+
+    /**
+     * Returns the minimum on a column of rows or null if the conditions don't match any rows
+     *
+     * @param mixed[] $where
+     */
+    public function minimum(string $column, array $where = []): ?string
+    {
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
+
+        return $this->modelWrapper->minimum($parameters);
+    }
+
+    /**
+     * Returns the maximum on a column of rows or null if the conditions don't match any rows
+     *
+     * @param mixed[] $where
+     */
+    public function maximum(string $column, array $where = []): ?string
+    {
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
+
+        return $this->modelWrapper->maximum($parameters);
     }
 
     /**

@@ -343,69 +343,63 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function sumShouldReturnNullWhenNoRowsAreFound(): void
+    public function sumShouldReturnCorrectValue(): void
     {
-        $expectedParams = [
-            'column' => 'testColumn',
-            'conditions' => '[id] = ?0',
-            'bind' => [1],
-        ];
-
-        $this->modelWrapper->expects(self::once())
-            ->method('sum')
-            ->with(self::identicalTo($expectedParams))
-            ->willReturn(null);
-
-        self::assertNull($this->repository->sum('testColumn', ['id' => 1]));
+        $this->assertColumnAggregationMethod('sum', [[null, null], ['10.4', 10.4]]);
     }
 
     /**
      * @test
      */
-    public function sumShouldReturnCorrectResult(): void
+    public function averageShouldReturnCorrectValue(): void
     {
+        $this->assertColumnAggregationMethod('average', [[null, null], ['31.90', 31.9]]);
+    }
+
+    /**
+     * @test
+     */
+    public function minimumShouldReturnCorrectValue(): void
+    {
+        $this->assertColumnAggregationMethod('minimum', [[null, null], ['40.3', '40.3'], ['2019-01-01', '2019-01-01']]);
+    }
+
+    /**
+     * @test
+     */
+    public function maximumShouldReturnCorrectValue(): void
+    {
+        $this->assertColumnAggregationMethod('maximum', [[null, null], ['40.3', '40.3'], ['2019-01-01', '2019-01-01']]);
+    }
+
+    /**
+     * @param mixed[] $returnValuesData
+     */
+    protected function assertColumnAggregationMethod(string $methodName, array $returnValuesData): void
+    {
+        // Test if it gets only the column
         $expectedParams = ['column' => 'testColumn'];
-
         $this->modelWrapper->expects(self::once())
-            ->method('sum')
-            ->with(self::identicalTo($expectedParams))
-            ->willReturn('20.5');
+            ->method($methodName)
+            ->with(self::identicalTo($expectedParams));
+        $this->repository->{$methodName}('testColumn');
 
-        self::assertSame(20.5, $this->repository->sum('testColumn'));
-    }
+        $this->setUpDependencies();
 
-    /**
-     * @test
-     */
-    public function averageShouldReturnNullWhenNoRowsAreFound(): void
-    {
-        $expectedParams = [
-            'column' => 'testColumn',
-            'conditions' => '[id] = ?0',
-            'bind' => [1],
-        ];
-
+        // Test if it also gets the conditions parameter
+        $expectedParams = ['column' => 'testColumn', 'conditions' => '[field] = ?0', 'bind' => [1]];
         $this->modelWrapper->expects(self::once())
-            ->method('average')
-            ->with(self::identicalTo($expectedParams))
-            ->willReturn(null);
+            ->method($methodName)
+            ->with(self::identicalTo($expectedParams));
+        $this->repository->{$methodName}('testColumn', ['field' => 1]);
 
-        self::assertNull($this->repository->average('testColumn', ['id' => 1]));
-    }
+        // Now test if return values match
+        foreach ($returnValuesData as [$modelReturnValue, $repositoryReturnValue]) {
+            $this->setUpDependencies();
 
-    /**
-     * @test
-     */
-    public function averageShouldReturnCorrectResult(): void
-    {
-        $expectedParams = ['column' => 'testColumn'];
-
-        $this->modelWrapper->expects(self::once())
-            ->method('average')
-            ->with(self::identicalTo($expectedParams))
-            ->willReturn('10.5');
-
-        self::assertSame(10.5, $this->repository->average('testColumn'));
+            $this->modelWrapper->method($methodName)->willReturn($modelReturnValue);
+            self::assertSame($repositoryReturnValue, $this->repository->{$methodName}('testColumn'));
+        }
     }
 
     /**

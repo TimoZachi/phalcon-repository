@@ -35,7 +35,7 @@ abstract class TestCase extends PHPUnitTestCase
     protected static function setUpDi(): void
     {
         if (self::$sharedConnection === null) {
-            self::$sharedConnection = new SqliteDbAdapter(['dbname' => __DIR__ . '/database.sqlite']);
+            self::$sharedConnection = new SqliteDbAdapter(['dbname' => ':memory:']);
         }
 
         if (self::$sharedDi !== null) {
