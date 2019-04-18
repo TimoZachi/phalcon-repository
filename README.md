@@ -58,6 +58,22 @@ $resultSet = $userRepository->findWhere(
     5 // Offset.
 );
 
+// Aggregation methods
+
+// Count number of users in table
+$userRepository->count();
+
+// Get the minimum value of the `createdAt` colum using a where condition
+$userRepository->minimum('createdAt', ['id' => [100, 200], '@operator' => 'BETWEEN']);
+// Get the maximum value of the `name` column in the entire table
+$userRepository->maximum('name');
+
+// Returns the sum of the balance column on users with id 40, 41 and 42
+$userRepository->sum('balance', ['id' => [40, 41, 42]]);
+
+// Returns the average of the balance column on users with id 40, 41 and 42
+$userRepository->average('balance', ['id' => [40, 41, 42]]);
+
 ```
 
 To set up the repository pattern inside a phalcon project, you can use the `RepositoryFactory` class:

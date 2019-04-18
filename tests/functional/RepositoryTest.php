@@ -262,7 +262,7 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function maximumShouldReturnMinimumOnColumn(): void
+    public function maximumShouldReturnMaximumOnColumn(): void
     {
         self::assertSame('10.35', $this->paymentRepository->maximum('value'));
         self::assertSame('4', $this->paymentRepository->maximum('count'));
