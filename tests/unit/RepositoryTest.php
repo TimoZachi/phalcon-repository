@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace TZachi\PhalconRepository\Tests\Unit;
 
 use InvalidArgumentException;
-use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
@@ -34,7 +33,7 @@ final class RepositoryTest extends TestCase
      */
     public function setUpDependencies(): void
     {
-        $this->modelWrapper = $this->createPartialMock(ModelWrapper::class, ['find', 'findFirst', 'query']);
+        $this->modelWrapper = $this->createMock(ModelWrapper::class);
 
         $this->repository = new Repository($this->modelWrapper);
     }
@@ -189,6 +188,32 @@ final class RepositoryTest extends TestCase
     }
 
     /**
+     * @test
+     */
+    public function findAllShouldPassEmptyWhere(): void
+    {
+        /**
+         * @var SimpleResultset|MockObject $model
+         */
+        $resultSet      = $this->createMock(SimpleResultset::class);
+        $expectedParams = [
+            'order' => '[field] ASC, [field2] ASC',
+            'offset' => 20,
+            'limit' => 10,
+        ];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('find')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn($resultSet);
+
+        self::assertSame(
+            $resultSet,
+            $this->repository->findAll(['field', 'field2'], 10, 20)
+        );
+    }
+
+    /**
      * @return mixed[]
      */
     public function findByValidData(): array
@@ -271,20 +296,110 @@ final class RepositoryTest extends TestCase
     public function queryShouldReturnCriteria(): void
     {
         /**
-         * @var DiInterface|MockObject $di
-         */
-        $di = $this->createMock(DiInterface::class);
-        /**
          * @var Criteria|MockObject $di
          */
         $criteria = $this->createMock(Criteria::class);
 
         $this->modelWrapper->expects(self::once())
             ->method('query')
-            ->with(self::identicalTo($di))
             ->willReturn($criteria);
 
-        static::assertSame($criteria, $this->repository->query($di));
+        static::assertSame($criteria, $this->repository->query());
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldNotGetColumnParameterWhenColumnIsNull(): void
+    {
+        $expectedParams = [
+            'conditions' => '[field] = ?0',
+            'bind' => [1],
+        ];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('count')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn(0);
+
+        self::assertSame(0, $this->repository->count(null, ['field' => 1]));
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldGetColumnParameterWhenColumnIsSpecified(): void
+    {
+        $expectedParams = ['column' => 'testColumn'];
+
+        $this->modelWrapper->expects(self::once())
+            ->method('count')
+            ->with(self::identicalTo($expectedParams))
+            ->willReturn(0);
+
+        self::assertSame(0, $this->repository->count('testColumn'));
+    }
+
+    /**
+     * @test
+     */
+    public function sumShouldReturnCorrectValue(): void
+    {
+        $this->assertColumnAggregationMethod('sum', [[null, null], ['10.4', 10.4]]);
+    }
+
+    /**
+     * @test
+     */
+    public function averageShouldReturnCorrectValue(): void
+    {
+        $this->assertColumnAggregationMethod('average', [[null, null], ['31.90', 31.9]]);
+    }
+
+    /**
+     * @test
+     */
+    public function minimumShouldReturnCorrectValue(): void
+    {
+        $this->assertColumnAggregationMethod('minimum', [[null, null], ['40.3', '40.3'], ['2019-01-01', '2019-01-01']]);
+    }
+
+    /**
+     * @test
+     */
+    public function maximumShouldReturnCorrectValue(): void
+    {
+        $this->assertColumnAggregationMethod('maximum', [[null, null], ['40.3', '40.3'], ['2019-01-01', '2019-01-01']]);
+    }
+
+    /**
+     * @param mixed[] $returnValuesData
+     */
+    protected function assertColumnAggregationMethod(string $methodName, array $returnValuesData): void
+    {
+        // Test if it gets only the column
+        $expectedParams = ['column' => 'testColumn'];
+        $this->modelWrapper->expects(self::once())
+            ->method($methodName)
+            ->with(self::identicalTo($expectedParams));
+        $this->repository->{$methodName}('testColumn');
+
+        $this->setUpDependencies();
+
+        // Test if it also gets the conditions parameter
+        $expectedParams = ['column' => 'testColumn', 'conditions' => '[field] = ?0', 'bind' => [1]];
+        $this->modelWrapper->expects(self::once())
+            ->method($methodName)
+            ->with(self::identicalTo($expectedParams));
+        $this->repository->{$methodName}('testColumn', ['field' => 1]);
+
+        // Now test if return values match
+        foreach ($returnValuesData as [$modelReturnValue, $repositoryReturnValue]) {
+            $this->setUpDependencies();
+
+            $this->modelWrapper->method($methodName)->willReturn($modelReturnValue);
+            self::assertSame($repositoryReturnValue, $this->repository->{$methodName}('testColumn'));
+        }
     }
 
     /**

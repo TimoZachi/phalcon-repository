@@ -33,7 +33,7 @@ class ModelWrapperTest extends TestCase
      * @param mixed[] $args
      * @param mixed   $returnValue
      */
-    public function allMethodsInWrapperShouldReturnSameAsModel(string $methodName, array $args, $returnValue): void
+    public function allMethodsInWrapperShouldReturnSameValueAsModel(string $methodName, array $args, $returnValue): void
     {
         Wrapper::$methodName  = $methodName;
         Wrapper::$args        = $args;
@@ -76,6 +76,51 @@ class ModelWrapperTest extends TestCase
                 'methodName' => 'query',
                 'args' => [$this->createMock(DiInterface::class)],
                 'returnData' => $this->createMock(Criteria::class),
+            ],
+            [
+                'methodName' => 'count',
+                'args' => $defaultArgs,
+                'returnData' => 10,
+            ],
+            [
+                'methodName' => 'sum',
+                'args' => $defaultArgs,
+                'returnData' => null,
+            ],
+            [
+                'methodName' => 'sum',
+                'args' => $defaultArgs,
+                'returnData' => '11.4',
+            ],
+            [
+                'methodName' => 'average',
+                'args' => $defaultArgs,
+                'returnData' => null,
+            ],
+            [
+                'methodName' => 'average',
+                'args' => $defaultArgs,
+                'returnData' => '20.42',
+            ],
+            [
+                'methodName' => 'minimum',
+                'args' => $defaultArgs,
+                'returnData' => null,
+            ],
+            [
+                'methodName' => 'minimum',
+                'args' => $defaultArgs,
+                'returnData' => '2019-01-01',
+            ],
+            [
+                'methodName' => 'maximum',
+                'args' => $defaultArgs,
+                'returnData' => null,
+            ],
+            [
+                'methodName' => 'maximum',
+                'args' => $defaultArgs,
+                'returnData' => '2019-01-01',
             ],
         ];
     }

@@ -9,9 +9,9 @@ use Phalcon\Mvc\Model;
 /**
  * Sample model for functional test cases
  *
- * @Source('users')
+ * @Source('payments')
  */
-class User extends Model
+class Payment extends Model
 {
     /**
      * @var int
@@ -22,16 +22,16 @@ class User extends Model
     public $id;
 
     /**
-     * @var string
-     * @Column(type="string", length=127, nullable=false)
+     * @var float
+     * @Column(type="float", length=8, nullable=false)
      */
-    public $name;
+    public $value;
 
     /**
-     * @var string
-     * @Column(type="string", length=127, nullable=false)
+     * @var int
+     * @Column(type="integer", length=10, nullable=false)
      */
-    public $email;
+    public $count;
 
     /**
      * @var string
@@ -41,6 +41,6 @@ class User extends Model
 
     public function getSource(): string
     {
-        return 'users';
+        return 'payments';
     }
 }

@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace TZachi\PhalconRepository;
 
 use InvalidArgumentException;
-use Phalcon\DiInterface;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use function array_keys;
-use function array_merge;
 use function count;
 use function implode;
 use function in_array;
@@ -46,14 +44,14 @@ class Repository
     }
 
     /**
-     * Queries for a single model by a set of conditions
+     * Returns the first record matching the specified conditions
      *
      * @param mixed[]  $where   Where condition
      * @param string[] $orderBy One or more order by statements
      */
     public function findFirstWhere(array $where, array $orderBy = []): ?Model
     {
-        $parameters = array_merge($this->whereToParameters($where), $this->orderByToParameters($orderBy));
+        $parameters = $this->whereToParameters($where) + $this->orderByToParameters($orderBy);
 
         $model = $this->modelWrapper->findFirst($parameters);
         if ($model === false) {
@@ -64,7 +62,7 @@ class Repository
     }
 
     /**
-     * Queries for a single model by a single condition
+     * Returns the first record that matches a single condition
      *
      * @param mixed    $value
      * @param string[] $orderBy One or more order by statements
@@ -75,7 +73,7 @@ class Repository
     }
 
     /**
-     * Queries for a single model by its primary key
+     * Returns the first record that matches a primary key
      *
      * @param mixed $id
      */
@@ -85,14 +83,14 @@ class Repository
     }
 
     /**
-     * Queries for multiple models by a set of conditions
+     * Finds all records matching the specified conditions
      *
      * @param mixed[]  $where
      * @param string[] $orderBy
      */
     public function findWhere(array $where, array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
     {
-        $parameters = array_merge($this->whereToParameters($where), $this->orderByToParameters($orderBy));
+        $parameters = $this->whereToParameters($where) + $this->orderByToParameters($orderBy);
         if ($limit > 0) {
             $parameters['offset'] = $offset;
             $parameters['limit']  = $limit;
@@ -102,7 +100,17 @@ class Repository
     }
 
     /**
-     * Queries for multiple models by a single condition
+     * Finds all records in a table
+     *
+     * @param string[] $orderBy
+     */
+    public function findAll(array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
+    {
+        return $this->findWhere([], $orderBy, $limit, $offset);
+    }
+
+    /**
+     * Finds all records that match a single condition
      *
      * @param mixed    $value
      * @param string[] $orderBy
@@ -118,11 +126,84 @@ class Repository
     }
 
     /**
-     * Returns a query builder to create custom queries
+     * Returns a query builder (Criteria) to create custom queries
      */
-    public function query(?DiInterface $dependencyInjector = null): Criteria
+    public function query(): Criteria
     {
-        return $this->modelWrapper->query($dependencyInjector);
+        return $this->modelWrapper->query();
+    }
+
+    /**
+     * Returns the number of rows that match a certain condition
+     *
+     * @param mixed[] $where
+     */
+    public function count(?string $column = null, array $where = []): int
+    {
+        $parameters = $this->whereToParameters($where);
+        if ($column !== null) {
+            $parameters['column'] = $column;
+        }
+
+        return $this->modelWrapper->count($parameters);
+    }
+
+    /**
+     * Returns the sum on a column of rows or null if the conditions don't match any rows
+     *
+     * @param mixed[] $where
+     */
+    public function sum(string $column, array $where = []): ?float
+    {
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
+
+        $sum = $this->modelWrapper->sum($parameters);
+        if ($sum === null) {
+            return null;
+        }
+
+        return (float) $sum;
+    }
+
+    /**
+     * Returns the average on a column of rows or null if the conditions don't match any rows
+     *
+     * @param mixed[] $where
+     */
+    public function average(string $column, array $where = []): ?float
+    {
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
+
+        $average = $this->modelWrapper->average($parameters);
+        if ($average === null) {
+            return null;
+        }
+
+        return (float) $average;
+    }
+
+    /**
+     * Returns the minimum on a column of rows or null if the conditions don't match any rows
+     *
+     * @param mixed[] $where
+     */
+    public function minimum(string $column, array $where = []): ?string
+    {
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
+
+        return $this->modelWrapper->minimum($parameters);
+    }
+
+    /**
+     * Returns the maximum on a column of rows or null if the conditions don't match any rows
+     *
+     * @param mixed[] $where
+     */
+    public function maximum(string $column, array $where = []): ?string
+    {
+        $parameters = ['column' => $column] + $this->whereToParameters($where);
+
+        return $this->modelWrapper->maximum($parameters);
     }
 
     /**
