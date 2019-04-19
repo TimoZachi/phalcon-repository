@@ -1,0 +1,40 @@
+dist: xenial
+sudo: false
+language: php
+
+php:
+  - '7.2'
+  - '7.3'
+
+cache:
+  directories:
+    - $HOME/.composer/cache
+
+before_install:
+  - curl -sSLO https://codeload.github.com/phalcon/cphalcon/tar.gz/v3.4.3
+  - tar xvzf v3.4.3
+  - cd cphalcon-3.4.3/build
+  - ./install
+  - cd ../../
+  - rm -rf cphalcon-3.4.3
+  - rm -rf v3.4.3
+  - echo 'extension=phalcon.so' >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+
+install: travis_retry composer install
+
+script:
+  - ./vendor/bin/phpunit --configuration=phpunit.xml.dist --testsuite=Unit
+  - ./vendor/bin/phpunit --configuration=phpunit.xml.dist --testsuite=Functional
+
+jobs:
+  include:
+    - stage: Analyse
+      name: "Code style analysis"
+      script:
+        - ./vendor/bin/phpcs
+
+    - stage: Analyse
+      name: "Static analysis"
+      script:
+        - ./vendor/bin/phpstan analyse --level=max --configuration=phpstan-src.neon.dist src
+        - ./vendor/bin/phpstan analyse --level=max --configuration=phpstan-tests.neon.dist tests
