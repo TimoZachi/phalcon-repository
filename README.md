@@ -1,5 +1,11 @@
 # Phalcon Repository
 
+[![License](https://img.shields.io/packagist/l/tzachi/phalcon-repository.svg)](https://packagist.org/packages/tzachi/phalcon-repository)
+[![Build Status](https://travis-ci.org/TimoZachi/phalcon-repository.svg?branch=master)](https://travis-ci.org/TimoZachi/phalcon-repository)
+[![Total Downloads](https://img.shields.io/packagist/dt/tzachi/phalcon-repository.svg)](https://packagist.org/packages/tzachi/phalcon-repository)
+[![Latest Stable Version](https://img.shields.io/packagist/v/tzachi/phalcon-repository.svg?color=blue&label=stable)](https://packagist.org/packages/tzachi/phalcon-repository)
+[![Unstable Version](https://img.shields.io/packagist/vpre/tzachi/phalcon-repository.svg?label=unstable)](https://packagist.org/packages/tzachi/phalcon-repository)
+
 Phalcon Repository is a library for implementing the repository pattern in projects that use the Phalcon PHP Framework
 
 ## Installation
@@ -154,7 +160,7 @@ public function userAction($id): void
 
 Pull requests are most certainly welcome. The code will be validated against the following checks:
 
-* Code is validated against the [Coding Standard](https://github.com/timozachi/coding-standard)
+* Code is validated against the [Coding Standard](https://github.com/timozachi/phalcon-repository)
 * A static analysis tool (phpstan) will analyse your code
 * Unit tests must have 100% code coverage (if you create a new feature, please ensure that there are enough tests to cover it)
 * For some features, a functional test is required 
