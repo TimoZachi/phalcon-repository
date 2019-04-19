@@ -4,7 +4,7 @@ Phalcon Repository is a library for implementing the repository pattern in proje
 
 ## Installation
 
-Installation is done via composer: `composer require tzachi/phalcon-repository:1.0.x-dev`
+Installation is done via composer: `composer require tzachi/phalcon-repository:0.1.x-dev`
 
 ## Usage
 
@@ -172,8 +172,6 @@ make phpstan-src
 make phpstan-tests
 make test-unit
 ```
-
-Please note that soon enough a CI tool will handle those checks automatically
 
 ## Notes
 
