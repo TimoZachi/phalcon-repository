@@ -66,7 +66,7 @@ test-unit-php72: dev/phalcon-repository-php72.json vendor phpunit.xml.dist
 
 ## Unit tests
 test-unit-php73: dev/phalcon-repository-php73.json vendor phpunit.xml.dist
-	$(DOCKER_RUN_73) $(PHPUNIT) --configuration=phpunit.xml.dist --testsuite=Unit
+	$(DOCKER_RUN_73) $(PHPUNIT) --configuration=phpunit.xml.dist --coverage-text --testsuite=Unit
 
 ## Functional tests
 test-functional-php72: dev/phalcon-repository-php72.json vendor phpunit.xml.dist
