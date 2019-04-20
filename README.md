@@ -1,10 +1,14 @@
 # Phalcon Repository
 
 [![License](https://img.shields.io/packagist/l/tzachi/phalcon-repository.svg)](https://packagist.org/packages/tzachi/phalcon-repository)
-[![Build Status](https://travis-ci.org/TimoZachi/phalcon-repository.svg?branch=master)](https://travis-ci.org/TimoZachi/phalcon-repository)
 [![Total Downloads](https://img.shields.io/packagist/dt/tzachi/phalcon-repository.svg)](https://packagist.org/packages/tzachi/phalcon-repository)
 [![Latest Stable Version](https://img.shields.io/packagist/v/tzachi/phalcon-repository.svg?color=blue&label=stable)](https://packagist.org/packages/tzachi/phalcon-repository)
 [![Unstable Version](https://img.shields.io/packagist/vpre/tzachi/phalcon-repository.svg?label=unstable)](https://packagist.org/packages/tzachi/phalcon-repository)
+
+![Branch master](https://img.shields.io/badge/branch-master-brightgreen.svg?style=flat-square)
+[![Build Status](https://travis-ci.org/TimoZachi/phalcon-repository.svg?branch=master)](https://travis-ci.org/TimoZachi/phalcon-repository)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/TimoZachi/phalcon-repository/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/TimoZachi/phalcon-repository/?branch=master)
+[![Code Coverage](https://scrutinizer-ci.com/g/TimoZachi/phalcon-repository/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/TimoZachi/phalcon-repository/?branch=master)
 
 Phalcon Repository is a library for implementing the repository pattern in projects that use the Phalcon PHP Framework
 

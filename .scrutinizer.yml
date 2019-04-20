@@ -1,0 +1,40 @@
+build:
+  dependencies:
+    before:
+      - currentDir=$(pwd)
+      - tempDir=$(mktemp -d)
+      - curl -sSL -o "$tempDir/cphalcon" https://codeload.github.com/phalcon/cphalcon/tar.gz/v3.4.3
+      - tar -C "$tempDir" -xzf "$tempDir/cphalcon"
+      - cd "$tempDir"/cphalcon-3.4.3/build
+      - ./install
+      - cd "$currentDir"
+      - rm -rf "$tempDir"
+      - echo 'extension=phalcon.so' >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  nodes:
+    analysis:
+      environment:
+        php:
+          version: 7.2
+      cache:
+        directories:
+          - ~/.composer/cache
+      project_setup:
+        override: true
+      tests:
+        override:
+          - php-scrutinizer-run
+
+filter:
+  excluded_paths:
+    - 'tests/*'
+
+checks:
+  php: true
+
+tools:
+  external_code_coverage: true
+
+build_failure_conditions:
+  - 'elements.rating(<= C).new.exists'
+  - 'issues.severity(>= MAJOR).new.exists'
+  - 'project.metric_change("scrutinizer.test_coverage", < 0)'

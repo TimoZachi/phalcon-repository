@@ -84,4 +84,4 @@ test-functional-php73: dev/phalcon-repository-php73.json vendor phpunit.xml.dist
 
 ## Attaches current cli to the docker container
 docker-attach: dev/phalcon-repository-php73.json
-	$(DOCKER_RUN) /bin/bash
+	$(DOCKER_RUN_73) /bin/bash
