@@ -397,7 +397,7 @@ final class RepositoryTest extends TestCase
         foreach ($returnValuesData as [$modelReturnValue, $repositoryReturnValue]) {
             $this->setUpDependencies();
 
-            $this->modelWrapper->method($methodName)->willReturn($modelReturnValue);
+            $this->modelWrapper->expects(self::atLeastOnce())->method($methodName)->willReturn($modelReturnValue);
             self::assertSame($repositoryReturnValue, $this->repository->{$methodName}('testColumn'));
         }
     }

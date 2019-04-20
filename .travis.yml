@@ -11,13 +11,14 @@ cache:
     - $HOME/.composer/cache
 
 before_install:
-  - curl -sSLO https://codeload.github.com/phalcon/cphalcon/tar.gz/v3.4.3
-  - tar xvzf v3.4.3
-  - cd cphalcon-3.4.3/build
+  - currentDir=$(pwd)
+  - tempDir=$(mktemp -d)
+  - curl -sSL -o "$tempDir/cphalcon" https://codeload.github.com/phalcon/cphalcon/tar.gz/v3.4.3
+  - tar -C "$tempDir" -xzf "$tempDir/cphalcon"
+  - cd "$tempDir"/cphalcon-3.4.3/build
   - ./install
-  - cd ../../
-  - rm -rf cphalcon-3.4.3
-  - rm -rf v3.4.3
+  - cd "$currentDir"
+  - rm -rf "$tempDir"
   - echo 'extension=phalcon.so' >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
 
 install: travis_retry composer install
@@ -28,6 +29,16 @@ script:
 
 jobs:
   include:
+    - stage: Analyse
+      name: "Code coverage analysis"
+      before_script:
+        - if [[ ! $(php -m | grep -i xdebug) ]]; then echo "xdebug is required for code coverage"; exit 1; fi
+      script:
+        - ./vendor/bin/phpunit --configuration=phpunit.xml.dist --coverage-clover=./clover.xml --testsuite=Unit
+      after_script:
+        - wget https://scrutinizer-ci.com/ocular.phar
+        - php ocular.phar code-coverage:upload --format=php-clover ./clover.xml
+
     - stage: Analyse
       name: "Code style analysis"
       script:

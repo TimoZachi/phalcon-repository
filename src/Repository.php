@@ -23,7 +23,7 @@ class Repository
     public const TYPE_AND = 'AND';
     public const TYPE_OR  = 'OR';
 
-    protected const OPERATORS = ['=', '<>', '<=', '>=','<', '>', 'BETWEEN'];
+    protected const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'BETWEEN'];
 
     protected const CONDITION_TYPES = [self::TYPE_AND, self::TYPE_OR];
 
@@ -230,31 +230,10 @@ class Repository
             }
 
             if (is_array($value)) {
-                if ($value === []) {
-                    throw new InvalidArgumentException('Empty array value is not allowed in where conditions');
-                }
-
-                // Check if $value is an associative array.
-                if (array_keys($value) !== range(0, count($value) - 1)) {
-                    $parameters = $this->whereToParameters($value, $paramsIdx);
-
-                    $conditions[] = '(' . $parameters['conditions'] . ')';
-                    $bindings    += $parameters['bind'];
-
-                    continue;
-                }
-
-                if ($config['operator'] === 'BETWEEN') {
-                    $conditions[] = sprintf(
-                        '[%s] BETWEEN %s',
-                        $field,
-                        $this->createBetweenRange($value, $bindings, $paramsIdx)
-                    );
-
-                    continue;
-                }
-
-                $conditions[] = sprintf('[%s] IN (%s)', $field, $this->createValueList($value, $bindings, $paramsIdx));
+                $conditions[] = sprintf(
+                    $this->createConditionsFromArray($config['operator'], $value, $bindings, $paramsIdx),
+                    $field
+                );
 
                 continue;
             }
@@ -291,6 +270,35 @@ class Repository
         }
 
         return $config;
+    }
+
+    /**
+     * @param mixed[] $value
+     * @param mixed[] $bindings
+     */
+    protected function createConditionsFromArray(
+        string $operator,
+        array $value,
+        array &$bindings,
+        int &$paramsIdx
+    ): string {
+        if ($value === []) {
+            throw new InvalidArgumentException('Empty array value is not allowed in where conditions');
+        }
+
+        // Check if $value is not an indexed array
+        if (array_keys($value) !== range(0, count($value) - 1)) {
+            $parameters = $this->whereToParameters($value, $paramsIdx);
+            $bindings  += $parameters['bind'];
+
+            return '(' . $parameters['conditions'] . ')';
+        }
+
+        if ($operator === 'BETWEEN') {
+            return '[%s] BETWEEN ' . $this->createBetweenRange($value, $bindings, $paramsIdx);
+        }
+
+        return '[%s] IN (' . $this->createValueList($value, $bindings, $paramsIdx) . ')';
     }
 
     /**
