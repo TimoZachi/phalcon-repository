@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace TZachi\PhalconRepository\Tests\Unit;
 
-use InvalidArgumentException;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
@@ -12,6 +11,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
+use TZachi\PhalconRepository\Resolver\QueryParameter;
 
 /**
  * @coversDefaultClass Repository
@@ -24,6 +24,11 @@ final class RepositoryTest extends TestCase
     private $modelWrapper;
 
     /**
+     * @var QueryParameter|MockObject
+     */
+    private $queryParameterResolver;
+
+    /**
      * @var Repository
      */
     private $repository;
@@ -33,28 +38,34 @@ final class RepositoryTest extends TestCase
      */
     public function setUpDependencies(): void
     {
-        $this->modelWrapper = $this->createMock(ModelWrapper::class);
+        $this->modelWrapper           = $this->createMock(ModelWrapper::class);
+        $this->queryParameterResolver = $this->createMock(QueryParameter::class);
 
-        $this->repository = new Repository($this->modelWrapper);
+        $this->repository = new Repository($this->modelWrapper, $this->queryParameterResolver);
     }
 
     /**
      * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     * @depends orderByToParametersShouldConvertValidArgs
      */
-    public function findFirstWhereShouldGetValidParametersAndReturnModel(): void
+    public function findFirstWhereShouldCombineParametersAndReturnModel(): void
     {
-        $where    = [
-            'field' => 1,
-            'field2' => 'abc',
-        ];
-        $orderBy  = ['field', 'field2' => 'DESC'];
+        $where    = ['field' => 'x'];
+        $orderBy  = ['a'];
         $expected = [
-            'conditions' => '[field] = ?0 AND [field2] = ?1',
-            'bind' => [1, 'abc'],
-            'order' => '[field] ASC, [field2] DESC',
+            'conditions' => '[field] = ?0',
+            'bind' => ['x'],
+            'order' => '[field] ASC',
         ];
+
+        $this->queryParameterResolver->expects(self::once())
+            ->method('where')
+            ->with(self::identicalTo($where))
+            ->willReturn(['conditions' => '[field] = ?0', 'bind' => ['x']]);
+
+        $this->queryParameterResolver->expects(self::once())
+            ->method('orderBy')
+            ->with(self::identicalTo($orderBy))
+            ->willReturn(['order' => '[field] ASC']);
 
         /**
          * @var Model|MockObject $model
@@ -70,72 +81,69 @@ final class RepositoryTest extends TestCase
 
     /**
      * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     * @depends orderByToParametersShouldConvertValidArgs
      */
-    public function findFirstByShouldReturnModel(): void
-    {
-        /**
-         * @var Model|MockObject $model
-         */
-        $model = $this->createMock(Model::class);
-        $this->modelWrapper->expects(self::once())
-            ->method('findFirst')
-            ->willReturn($model);
-
-        self::assertSame($model, $this->repository->findFirstBy('field', 1));
-    }
-
-    /**
-     * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     * @depends orderByToParametersShouldConvertValidArgs
-     */
-    public function findFirstByShouldReturnNullWhenWrapperReturnsFalse(): void
+    public function findFirstWhereShouldReturnNullWhenModelWrapperReturnsFalse(): void
     {
         $this->modelWrapper->expects(self::once())
             ->method('findFirst')
             ->willReturn(false);
 
-        self::assertNull($this->repository->findFirstBy('field', 1));
+        self::assertNull($this->repository->findFirstWhere());
     }
 
     /**
      * @test
-     * @depends whereToParametersShouldConvertValidArgs
      */
-    public function findFirstShouldReturnModel(): void
+    public function findFirstByShouldCallFindFirstWhereAndReturnModel(): void
     {
+        /**
+         * @var Repository|MockObject $repository
+         */
+        $repository = $this->createPartialMock(Repository::class, ['findFirstWhere']);
+
         /**
          * @var Model|MockObject $model
          */
         $model = $this->createMock(Model::class);
-        $this->modelWrapper->expects(self::once())
-            ->method('findFirst')
+        $repository->expects(self::once())
+            ->method('findFirstWhere')
+            ->with(self::identicalTo(['field' => 1]), self::identicalTo(['field' => 'DESC']))
             ->willReturn($model);
 
-        self::assertSame($model, $this->repository->findFirst(1));
+        self::assertSame($model, $repository->findFirstBy('field', 1, ['field' => 'DESC']));
     }
 
     /**
      * @test
-     * @depends whereToParametersShouldConvertValidArgs
      */
-    public function findFirstShouldUseCustomId(): void
+    public function findFirstByShouldReturnNullWhenFindFirstWhereReturnsNull(): void
     {
-        $repository = new Repository($this->modelWrapper, 'customIdField');
+        /**
+         * @var Repository|MockObject $repository
+         */
+        $repository = $this->createPartialMock(Repository::class, ['findFirstWhere']);
+
+        $repository->expects(self::once())
+            ->method('findFirstWhere')
+            ->willReturn(null);
+
+        self::assertNull($repository->findFirstBy('field', 1));
+    }
+
+    /**
+     * @test
+     */
+    public function findFirstShouldCallFindFirstByWithDefaultIdAndReturnModel(): void
+    {
+        $repository = $this->createRepositoryMock(['findFirstBy']);
 
         /**
          * @var Model|MockObject $model
          */
         $model = $this->createMock(Model::class);
-
-        $this->modelWrapper->expects(self::once())
-            ->method('findFirst')
-            ->with(self::identicalTo([
-                'conditions' => '[customIdField] = ?0',
-                'bind' => [1],
-            ]))
+        $repository->expects(self::once())
+            ->method('findFirstBy')
+            ->with(self::identicalTo('id'), self::identicalTo(1))
             ->willReturn($model);
 
         self::assertSame($model, $repository->findFirst(1));
@@ -143,151 +151,107 @@ final class RepositoryTest extends TestCase
 
     /**
      * @test
-     * @depends whereToParametersShouldConvertValidArgs
      */
-    public function findFirstShouldReturnNullWhenWrapperReturnsFalse(): void
+    public function findFirstShouldUseCustomId(): void
     {
-        $this->modelWrapper->expects(self::once())
-            ->method('findFirst')
-            ->willReturn(false);
+        $repository = $this->createRepositoryMock(['findFirstBy'], 'customId');
 
-        self::assertNull($this->repository->findFirst(1));
+        /**
+         * @var Model|MockObject $model
+         */
+        $model = $this->createMock(Model::class);
+        $repository->expects(self::once())
+            ->method('findFirstBy')
+            ->with(self::identicalTo('customId'), self::identicalTo(1))
+            ->willReturn($model);
+
+        $repository->findFirst(1);
     }
 
     /**
      * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     * @depends orderByToParametersShouldConvertValidArgs
-     * @dataProvider findByValidData
-     *
-     * @param mixed[]  $expectedParams
-     * @param string[] $orderBy
      */
-    public function findByShouldReturnResultsetWithValidData(
-        string $fieldName,
-        string $fieldValue,
-        array $expectedParams,
-        array $orderBy,
-        int $limit = 0,
-        int $offset = 0
-    ): void {
+    public function findFirstShouldReturnNullWhenFindFirstByReturnsFalse(): void
+    {
+        $repository = $this->createRepositoryMock(['findFirstBy']);
+
+        $repository->expects(self::once())
+            ->method('findFirstBy')
+            ->willReturn(null);
+
+        self::assertNull($repository->findFirst(1));
+    }
+
+    /**
+     * @test
+     */
+    public function findWhereShouldCombineParametersAndReturnSimpleResultset(): void
+    {
+        $where    = ['field' => 'x'];
+        $orderBy  = ['a'];
+        $limit    = 10;
+        $offset   = 5;
+        $expected = [
+            'conditions' => '[field] = ?0',
+            'bind' => ['x'],
+            'order' => '[field] ASC',
+            'limit' => 10,
+            'offset' => 5,
+        ];
+
+        $this->queryParameterResolver->expects(self::once())
+            ->method('where')
+            ->with(self::identicalTo($where))
+            ->willReturn(['conditions' => '[field] = ?0', 'bind' => ['x']]);
+
+        $this->queryParameterResolver->expects(self::once())
+            ->method('orderBy')
+            ->with(self::identicalTo($orderBy))
+            ->willReturn(['order' => '[field] ASC']);
+
+        $this->queryParameterResolver->expects(self::once())
+            ->method('limit')
+            ->with(self::identicalTo(10), self::identicalTo(5))
+            ->willReturn(['limit' => 10, 'offset' => 5]);
+
         /**
-         * @var SimpleResultset|MockObject $model
+         * @var SimpleResultset|MockObject $resultSet
          */
         $resultSet = $this->createMock(SimpleResultset::class);
-
         $this->modelWrapper->expects(self::once())
             ->method('find')
-            ->with(self::identicalTo($expectedParams))
+            ->with(self::identicalTo($expected))
             ->willReturn($resultSet);
 
-        self::assertSame(
-            $resultSet,
-            $this->repository->findBy($fieldName, $fieldValue, $orderBy, $limit, $offset)
-        );
+        self::assertSame($resultSet, $this->repository->findWhere($where, $orderBy, $limit, $offset));
     }
 
     /**
      * @test
      */
-    public function findAllShouldPassEmptyWhere(): void
+    public function findByShouldCallFindWhereAndReturnSimpleResultset(): void
     {
-        /**
-         * @var SimpleResultset|MockObject $model
-         */
-        $resultSet      = $this->createMock(SimpleResultset::class);
-        $expectedParams = [
-            'order' => '[field] ASC, [field2] ASC',
-            'offset' => 20,
-            'limit' => 10,
-        ];
+        $repository = $this->createRepositoryMock(['findWhere']);
 
-        $this->modelWrapper->expects(self::once())
-            ->method('find')
-            ->with(self::identicalTo($expectedParams))
+        $orderBy = ['a'];
+        $limit   = 10;
+        $offset  = 5;
+
+        /**
+         * @var SimpleResultset|MockObject $resultSet
+         */
+        $resultSet = $this->createMock(SimpleResultset::class);
+        $repository->expects(self::once())
+            ->method('findWhere')
+            ->with(
+                self::identicalTo(['field' => 'x']),
+                self::identicalTo($orderBy),
+                self::identicalTo($limit),
+                self::identicalTo($offset)
+            )
             ->willReturn($resultSet);
 
-        self::assertSame(
-            $resultSet,
-            $this->repository->findAll(['field', 'field2'], 10, 20)
-        );
-    }
-
-    /**
-     * @return mixed[]
-     */
-    public function findByValidData(): array
-    {
-        $testData = 'test value';
-
-        return [
-            'Params only' => [
-                'fieldName' => 'field',
-                'fieldValue' => $testData,
-                'expectedParams' => [
-                    'conditions' => '[field] = ?0',
-                    'bind' => [0 => $testData],
-                ],
-                'orderBy' => [],
-                'limit' => 0,
-                'offset' => 0,
-            ],
-            'With order by' => [
-                'fieldName' => 'field',
-                'fieldValue' => $testData,
-                'expectedParams' => [
-                    'conditions' => '[field] = ?0',
-                    'bind' => [0 => $testData],
-                    'order' => '[field] ASC, [field2] DESC',
-                ],
-                'orderBy' => [
-                    'field' => 'ASC',
-                    'field2' => 'DESC',
-                ],
-                'limit' => 0,
-                'offset' => 0,
-            ],
-            'With order by 2' => [
-                'fieldName' => 'field',
-                'fieldValue' => $testData,
-                'expectedParams' => [
-                    'conditions' => '[field] = ?0',
-                    'bind' => [0 => $testData],
-                    'order' => '[field] ASC, [field2] ASC',
-                ],
-                'orderBy' => ['field', 'field2'],
-                'limit' => 0,
-                'offset' => 0,
-            ],
-            'With limit' => [
-                'fieldName' => 'field',
-                'fieldValue' => $testData,
-                'expectedParams' => [
-                    'conditions' => '[field] = ?0',
-                    'bind' => [0 => $testData],
-                    'order' => '[field] ASC',
-                    'offset' => 0,
-                    'limit' => 10,
-                ],
-                'orderBy' => ['field'],
-                'limit' => 10,
-                'offset' => 0,
-            ],
-            'With offset and limit' => [
-                'fieldName' => 'field',
-                'fieldValue' => $testData,
-                'expectedParams' => [
-                    'conditions' => '[field] = ?0',
-                    'bind' => [0 => $testData],
-                    'order' => '[field] ASC, [field2] ASC',
-                    'offset' => 10,
-                    'limit' => 5,
-                ],
-                'orderBy' => ['field', 'field2'],
-                'limit' => 5,
-                'offset' => 10,
-            ],
-        ];
+        $repository->findBy('field', 'x', $orderBy, $limit, $offset);
     }
 
     /**
@@ -310,292 +274,171 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function countShouldNotGetColumnParameterWhenColumnIsNull(): void
+    public function countShouldCombineParametersWhenColumnIsSpecified(): void
     {
-        $expectedParams = [
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('count', 102);
+
+        self::assertSame(102, $this->repository->count($column, $where));
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldNotGetColumnWhenColumnParameterIsNull(): void
+    {
+        $expected = [
             'conditions' => '[field] = ?0',
             'bind' => [1],
         ];
 
-        $this->modelWrapper->expects(self::once())
-            ->method('count')
-            ->with(self::identicalTo($expectedParams))
-            ->willReturn(0);
-
-        self::assertSame(0, $this->repository->count(null, ['field' => 1]));
-    }
-
-    /**
-     * @test
-     */
-    public function countShouldGetColumnParameterWhenColumnIsSpecified(): void
-    {
-        $expectedParams = ['column' => 'testColumn'];
+        $this->queryParameterResolver->expects(self::once())
+            ->method('where')
+            ->with(['field' => 1])
+            ->willReturn($expected);
 
         $this->modelWrapper->expects(self::once())
             ->method('count')
-            ->with(self::identicalTo($expectedParams))
-            ->willReturn(0);
+            ->with(self::identicalTo($expected))
+            ->willReturn(10);
 
-        self::assertSame(0, $this->repository->count('testColumn'));
+        self::assertSame(10, $this->repository->count(null, ['field' => 1]));
     }
 
     /**
      * @test
      */
-    public function sumShouldReturnCorrectValue(): void
+    public function sumShouldCombineParametersAndReturnFloat(): void
     {
-        $this->assertColumnAggregationMethod('sum', [[null, null], ['10.4', 10.4]]);
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('sum', '101.3');
+
+        self::assertSame(101.3, $this->repository->sum($column, $where));
     }
 
     /**
      * @test
      */
-    public function averageShouldReturnCorrectValue(): void
+    public function sumShouldReturnNullWhenModelWrapperReturnsNull(): void
     {
-        $this->assertColumnAggregationMethod('average', [[null, null], ['31.90', 31.9]]);
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('sum', null);
+
+        self::assertNull($this->repository->sum($column, $where));
     }
 
     /**
      * @test
      */
-    public function minimumShouldReturnCorrectValue(): void
+    public function averageShouldCombineParametersAndReturnFloat(): void
     {
-        $this->assertColumnAggregationMethod('minimum', [[null, null], ['40.3', '40.3'], ['2019-01-01', '2019-01-01']]);
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('average', '10.5');
+
+        self::assertSame(10.5, $this->repository->average($column, $where));
     }
 
     /**
      * @test
      */
-    public function maximumShouldReturnCorrectValue(): void
+    public function averageShouldReturnNullWhenModelWrapperReturnsNull(): void
     {
-        $this->assertColumnAggregationMethod('maximum', [[null, null], ['40.3', '40.3'], ['2019-01-01', '2019-01-01']]);
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('average', null);
+
+        self::assertNull($this->repository->average($column, $where));
     }
 
     /**
-     * @param mixed[] $returnValuesData
+     * @test
      */
-    protected function assertColumnAggregationMethod(string $methodName, array $returnValuesData): void
+    public function minimumShouldCombineParametersAndReturnMinimum(): void
     {
-        // Test if it gets only the column
-        $expectedParams = ['column' => 'testColumn'];
-        $this->modelWrapper->expects(self::once())
-            ->method($methodName)
-            ->with(self::identicalTo($expectedParams));
-        $this->repository->{$methodName}('testColumn');
+        $returnValue      = '2019-01-01';
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('minimum', $returnValue);
 
-        $this->setUpDependencies();
+        self::assertSame($returnValue, $this->repository->minimum($column, $where));
+    }
 
-        // Test if it also gets the conditions parameter
-        $expectedParams = ['column' => 'testColumn', 'conditions' => '[field] = ?0', 'bind' => [1]];
-        $this->modelWrapper->expects(self::once())
-            ->method($methodName)
-            ->with(self::identicalTo($expectedParams));
-        $this->repository->{$methodName}('testColumn', ['field' => 1]);
+    /**
+     * @test
+     */
+    public function minimumShouldReturnNullWhenModelWrapperReturnsNull(): void
+    {
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('minimum', null);
 
-        // Now test if return values match
-        foreach ($returnValuesData as [$modelReturnValue, $repositoryReturnValue]) {
-            $this->setUpDependencies();
+        self::assertNull($this->repository->minimum($column, $where));
+    }
 
-            $this->modelWrapper->expects(self::atLeastOnce())->method($methodName)->willReturn($modelReturnValue);
-            self::assertSame($repositoryReturnValue, $this->repository->{$methodName}('testColumn'));
+    /**
+     * @test
+     */
+    public function maximumShouldCombineParametersAndReturnMaximum(): void
+    {
+        $returnValue      = '2019-01-31';
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('maximum', $returnValue);
+
+        self::assertSame($returnValue, $this->repository->maximum($column, $where));
+    }
+
+    /**
+     * @test
+     */
+    public function maximumShouldReturnNullWhenModelWrapperReturnsNull(): void
+    {
+        [$column, $where] = $this->createScenarioForAggregationMethodTest('maximum', null);
+
+        self::assertNull($this->repository->maximum($column, $where));
+    }
+
+    /**
+     * @param string[] $methods
+     *
+     * @return Repository|MockObject
+     */
+    private function createRepositoryMock(array $methods, ?string $customId = null)
+    {
+        $constructorArgs = [
+            $this->modelWrapper,
+            $this->queryParameterResolver,
+        ];
+        if ($customId !== null) {
+            $constructorArgs[] = $customId;
         }
+
+        return $this->getMockBuilder(Repository::class)
+            ->setConstructorArgs($constructorArgs)
+            ->disableOriginalClone()
+            ->disableArgumentCloning()
+            ->disallowMockingUnknownTypes()
+            ->setMethods($methods)
+            ->getMock();
     }
 
     /**
-     * @test
-     * @dataProvider whereParamValidData
+     * @param string|int|null $returnValue
      *
-     * @param mixed[] $expected
-     * @param mixed[] $where
-     */
-    public function whereToParametersShouldConvertValidArgs(array $expected, array $where): void
-    {
-        self::assertSame($expected, $this->repository->whereToParameters($where));
-    }
-
-    /**
      * @return mixed[]
      */
-    public function whereParamValidData(): array
+    private function createScenarioForAggregationMethodTest(string $methodName, $returnValue): array
     {
-        return [
-            'Empty where' => [
-                'expected' => [],
-                'where' => [],
-            ],
-            'Simple where' => [
-                'expected' => [
-                    'conditions' => '[test] IS NULL AND [test2] IN (?0, ?1, ?2) AND [test3] = ?3',
-                    'bind' => [
-                        0 => 'zero',
-                        1 => 'one',
-                        2 => 'two',
-                        3 => 'three',
-                    ],
-                ],
-                'where' => [
-                    'test' => null,
-                    'test2' => ['zero', 'one', 'two'],
-                    'test3' => 'three',
-                ],
-            ],
-            'Simple where with different operators' => [
-                'expected' => [
-                    'conditions' => '[test] IS NULL AND ([numericField] > ?0) AND ([numericField] <= ?1) '
-                        . 'AND ([dateField] BETWEEN ?2 AND ?3)',
-                    'bind' => [
-                        0 => 50,
-                        1 => 150,
-                        2 => '2019-01-01',
-                        3 => '2019-01-31',
-                    ],
-                ],
-                'where' => [
-                    'test' => null,
-                    [
-                        '@operator' => '>',
-                        'numericField' => 50,
-                    ],
-                    [
-                        '@operator' => '<=',
-                        'numericField' => 150,
-                    ],
-                    [
-                        '@operator' => 'BETWEEN',
-                        'dateField' => ['2019-01-01', '2019-01-31'],
-                    ],
-                ],
-            ],
-            'Composite where' => [
-                'expected' => [
-                    'conditions' => '[test] IN (?0, ?1, ?2) '
-                        . 'AND ([test3] = ?3 OR [test4] = ?4 OR ([test5] = ?5 AND [test6] = ?6)) '
-                        . 'AND ([test7] = ?7 OR [test8] = ?8) AND ([numericField] BETWEEN ?9 AND ?10)',
-                    'bind' => [
-                        0 => 'zero',
-                        1 => 'one',
-                        2 => 'two',
-                        3 => 'three',
-                        4 => 'four',
-                        5 => 'five',
-                        6 => 'six',
-                        7 => 'seven',
-                        8 => 'eight',
-                        9 => 1,
-                        10 => 10,
-                    ],
-                ],
-                'where' => [
-                    'test' => ['zero', 'one', 'two'],
-                    [
-                        '@type' => Repository::TYPE_OR,
-                        'test3' => 'three',
-                        'test4' => 'four',
-                        [
-                            '@type' => Repository::TYPE_AND,
-                            'test5' => 'five',
-                            'test6' => 'six',
-                        ],
-                    ],
-                    [
-                        '@type' => Repository::TYPE_OR,
-                        'test7' => 'seven',
-                        'test8' => 'eight',
-                    ],
-                    [
-                        '@operator' => 'BETWEEN',
-                        'numericField' => [1, 10],
-                    ],
-                ],
-            ],
+        $column   = 'testColumn';
+        $where    = ['field' => 1];
+        $expected = [
+            'column' => 'testColumn',
+            'conditions' => '[field] = ?0',
+            'bind' => [1],
         ];
-    }
 
-    /**
-     * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     */
-    public function whereToParametersShouldThrowExceptionWithInvalidBetweenValue(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageRegExp('/must be an array with exactly two values/i');
+        $this->queryParameterResolver->expects(self::once())
+            ->method('where')
+            ->with(self::identicalTo($where))
+            ->willReturn(['conditions' => '[field] = ?0', 'bind' => [1]]);
+        $this->queryParameterResolver->expects(self::once())
+            ->method('column')
+            ->with(self::identicalTo($column))
+            ->willReturn(['column' => $column]);
 
-        $this->repository->whereToParameters([
-            '@operator' => 'BETWEEN',
-            'numericField' => [1],
-        ]);
-    }
+        $this->modelWrapper->expects(self::once())
+            ->method($methodName)
+            ->with(self::identicalTo($expected))
+            ->willReturn($returnValue);
 
-    /**
-     * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     */
-    public function whereToParametersShouldThrowExceptionWithEmptyArrayValue(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageRegExp('/empty array value is not allowed/i');
-
-        $this->repository->whereToParameters([
-            'multipleFields' => [],
-        ]);
-    }
-
-    /**
-     * @test
-     * @depends whereToParametersShouldConvertValidArgs
-     */
-    public function whereToParametersShouldThrowExceptionWithInvalidOperator(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageRegExp('/\* is not a valid operator/i');
-
-        $this->repository->whereToParameters([
-            '@operator' => '*',
-            'field1' => 'value1',
-        ]);
-    }
-
-    /**
-     * @test
-     * @dataProvider orderByParamValidData
-     *
-     * @param mixed[]  $expected
-     * @param string[] $orderBy
-     */
-    public function orderByToParametersShouldConvertValidArgs(array $expected, array $orderBy): void
-    {
-        self::assertSame($expected, $this->repository->orderByToParameters($orderBy));
-    }
-
-    /**
-     * @return mixed[]
-     */
-    public function orderByParamValidData(): array
-    {
-        return [
-            'Empty orderBy' => [
-                'expected' => [],
-                'orderBy' => [],
-            ],
-            'Sort direction specified for every field' => [
-                'expected' => ['order' => '[field1] ASC, [field2] DESC, [field3] ASC'],
-                'orderBy' => ['field1' => 'ASC', 'field2' => 'desc', 'field3' => 'asc'],
-            ],
-            'Sort direction not specified' => [
-                'expected' => ['order' => '[field1] ASC, [field2] ASC, [field3] ASC'],
-                'orderBy' => ['field1', 'field2', 'field3'],
-            ],
-            'Mixed' => [
-                'expected' => ['order' => '[field1] ASC, [field2] DESC, [field3] ASC, [field4] DESC, [field4] ASC'],
-                'orderBy' => [
-                    'field1' => 'ASC',
-                    'field2' => 'DESC',
-                    0 => 'field3',
-                    'field4' => 'DESC',
-                    1 => 'field4',
-                ],
-            ],
-        ];
+        return [$column, $where];
     }
 }

@@ -13,6 +13,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use TZachi\PhalconRepository\Repository;
 use TZachi\PhalconRepository\RepositoryFactory;
+use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
 use TZachi\PhalconRepository\Tests\Mock\Repository\Company as CompanyRepository;
 use function get_class;
 
@@ -40,6 +41,11 @@ final class RepositoryFactoryTest extends TestCase
     private $annotations;
 
     /**
+     * @var QueryParameterResolver|MockObject
+     */
+    private $queryParameterResolver;
+
+    /**
      * @var RepositoryFactory
      */
     private $factory;
@@ -49,11 +55,12 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createDependencies(): void
     {
-        $this->annotation  = $this->createMock(Annotation::class);
-        $this->collection  = $this->createMock(Collection::class);
-        $this->reflection  = $this->createMock(Reflection::class);
-        $this->annotations = $this->createMock(AnnotationsAdapterInterface::class);
-        $this->factory     = new RepositoryFactory($this->annotations);
+        $this->annotation             = $this->createMock(Annotation::class);
+        $this->collection             = $this->createMock(Collection::class);
+        $this->reflection             = $this->createMock(Reflection::class);
+        $this->annotations            = $this->createMock(AnnotationsAdapterInterface::class);
+        $this->queryParameterResolver = $this->createMock(QueryParameterResolver::class);
+        $this->factory                = new RepositoryFactory($this->annotations, $this->queryParameterResolver);
     }
 
     /**
@@ -83,7 +90,7 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createShouldUseRepositoryInAnnotations(): void
     {
-        $this->setUpMocks(true, true, CompanyRepository::class);
+        $this->createScenarioForTest(true, true, CompanyRepository::class);
 
         self::assertInstanceOf(CompanyRepository::class, $this->factory->create('Model'));
     }
@@ -93,7 +100,7 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createShouldUseDefaultRepositoryWhenThereAreNoAnnotations(): void
     {
-        $this->setUpMocks(false, false, null);
+        $this->createScenarioForTest(false, false, null);
 
         // Make sure that the result repository is not an instance of a Repository subclass, but the actual class
         self::assertSame(Repository::class, get_class($this->factory->create('Model')));
@@ -102,9 +109,9 @@ final class RepositoryFactoryTest extends TestCase
     /**
      * @test
      */
-    public function createShouldUseDefaultRepositoryWhenRepositoryAnnotationWasNotSpecified(): void
+    public function createShouldUseDefaultRepositoryWhenRepositoryAnnotationIsNotSpecified(): void
     {
-        $this->setUpMocks(true, false, null);
+        $this->createScenarioForTest(true, false, null);
 
         // Make sure that the result repository is not an instance of a Repository subclass, but the actual class
         self::assertSame(Repository::class, get_class($this->factory->create('Model')));
@@ -115,7 +122,7 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createShouldThrowExceptionWithNoAnnotationParameter(): void
     {
-        $this->setUpMocks(true, true, null);
+        $this->createScenarioForTest(true, true, null);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage("Repository class '' doesn't exists");
@@ -126,9 +133,9 @@ final class RepositoryFactoryTest extends TestCase
     /**
      * @test
      */
-    public function createShouldThrowExceptionWithInvalidAnnotation(): void
+    public function createShouldThrowExceptionWhenRepositoryAnnotationIsInvalid(): void
     {
-        $this->setUpMocks(true, true, 'Inexistent\Class\Name');
+        $this->createScenarioForTest(true, true, 'Inexistent\Class\Name');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage("Repository class 'Inexistent\Class\Name' doesn't exists");
@@ -136,8 +143,11 @@ final class RepositoryFactoryTest extends TestCase
         $this->factory->create('Model');
     }
 
-    private function setUpMocks(bool $hasAnnotations, bool $hasRepositoryAnnotation, ?string $annotationArgument): void
-    {
+    private function createScenarioForTest(
+        bool $hasAnnotations,
+        bool $hasRepositoryAnnotation,
+        ?string $annotationArgument
+    ): void {
         $this->annotations->expects(self::once())
             ->method('get')
             ->with(self::identicalTo('Model'))

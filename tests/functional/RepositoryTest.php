@@ -8,9 +8,11 @@ use Faker\Factory;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
+use TZachi\PhalconRepository\Resolver\QueryParameter;
 use TZachi\PhalconRepository\Tests\Mock\Model\Payment;
 use TZachi\PhalconRepository\Tests\Mock\Model\User;
 use function array_reduce;
+use function count;
 use function current;
 use function next;
 use function range;
@@ -53,6 +55,7 @@ final class RepositoryTest extends TestCase
 
         $faker = Factory::create();
 
+        // Seed users table
         for ($i = 1; $i <= 30; $i++) {
             $user            = new User();
             $user->id        = $i;
@@ -64,6 +67,7 @@ final class RepositoryTest extends TestCase
             self::$users[$i] = $user;
         }
 
+        // Seed payments table
         for ($i = 1; $i < 10; $i++) {
             $payment            = new Payment();
             $payment->id        = $i;
@@ -83,14 +87,14 @@ final class RepositoryTest extends TestCase
     {
         self::resetModelsMetadata();
 
-        $this->userRepository    = new Repository(new ModelWrapper(User::class));
-        $this->paymentRepository = new Repository(new ModelWrapper(Payment::class));
+        $this->userRepository    = new Repository(new ModelWrapper(User::class), new QueryParameter());
+        $this->paymentRepository = new Repository(new ModelWrapper(Payment::class), new QueryParameter());
     }
 
     /**
      * @test
      */
-    public function findFirstShouldReturnModel(): void
+    public function findFirstShouldReturnModelThatMatchesId(): void
     {
         $user = $this->userRepository->findFirst(1);
         self::assertInstanceOf(User::class, $user);
@@ -100,7 +104,7 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findFirstShouldReturnNullWhenIdNotFound(): void
+    public function findFirstShouldReturnNullWhenIdCannotBeFound(): void
     {
         self::assertNull($this->userRepository->findFirst(100));
     }
@@ -108,12 +112,18 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findFirstByShouldReturnModel(): void
+    public function findFirstByShouldReturnModelThatMatchesCondition(): void
     {
         $user = $this->userRepository->findFirstBy('email', self::$users[10]->email);
         self::assertInstanceOf(User::class, $user);
         self::assertSame(self::$users[10]->toArray(), $user->toArray());
+    }
 
+    /**
+     * @test
+     */
+    public function findFirstByShouldOrderResults(): void
+    {
         $user = $this->userRepository->findFirstBy('id', [3, 4, 5], ['id' => 'DESC']);
         self::assertInstanceOf(User::class, $user);
         self::assertSame(self::$users[5]->toArray(), $user->toArray());
@@ -122,10 +132,10 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findFirstWhereShouldReturnModel(): void
+    public function findFirstWhereShouldReturnModelThatMatchesCondition(): void
     {
         $conditions = [
-            '@type' => Repository::TYPE_OR,
+            '@type' => QueryParameter::TYPE_OR,
             'name' => self::$users[26]->name,
             'email' => self::$users[28]->email,
         ];
@@ -133,20 +143,26 @@ final class RepositoryTest extends TestCase
         $user = $this->userRepository->findFirstWhere($conditions, ['id']);
         self::assertInstanceOf(User::class, $user);
         self::assertSame(self::$users[26]->toArray(), $user->toArray());
-
-        $user = $this->userRepository->findFirstWhere($conditions, ['id' => 'DESC']);
-        self::assertInstanceOf(User::class, $user);
-        self::assertSame(self::$users[28]->toArray(), $user->toArray());
     }
 
     /**
      * @test
      */
-    public function findFirstWhereShouldReturnNullWithInvalidWhere(): void
+    public function findFirstWhereShouldOrderResults(): void
+    {
+        $user = $this->userRepository->findFirstWhere(['id' => range(8, 21)], ['id' => 'DESC']);
+        self::assertInstanceOf(User::class, $user);
+        self::assertSame(self::$users[21]->toArray(), $user->toArray());
+    }
+
+    /**
+     * @test
+     */
+    public function findFirstWhereShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
     {
         $conditions = [
-            '@type' => Repository::TYPE_AND,
-            'name' => self::$users[26]->name,
+            '@type' => QueryParameter::TYPE_AND,
+            'name' => self::$users[26]->name, // Switched name with email
             'email' => self::$users[28]->email,
         ];
 
@@ -156,15 +172,7 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findAllShouldReturnAllRows(): void
-    {
-        $this->compareResultSet($this->userRepository->findAll(), self::$users);
-    }
-
-    /**
-     * @test
-     */
-    public function findByShouldReturnCorrectResultSet(): void
+    public function findByShouldReturnCorrectResultSetThatMatchesCondition(): void
     {
         $emails    = [
             self::$users[12]->email,
@@ -179,32 +187,40 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function findWhereShouldReturnCorrectResultSetWithComplexCondition(): void
+    public function findWhereShouldReturnCorrectResultSetThatMatchesCondition(): void
     {
         $resultSet = $this->userRepository->findWhere(
             [
-                '@type' => Repository::TYPE_OR,
+                '@type' => QueryParameter::TYPE_OR,
                 [
                     '@operator' => 'BETWEEN',
-                    'id' => [15, 21],
+                    'id' => [16, 21],
                 ],
-                'id' => range(5, 9),
-                'name' => self::$users[11]->name,
+                'name' => self::$users[14]->name,
+                'email' => self::$users[13]->email,
+                'id' => range(3, 10),
             ],
             ['id' => 'DESC'],
-            7,
+            8,
             4
         );
 
-        $this->compareResultSet($resultSet, $this->getUsersSlice([17, 16, 15, 11, 9, 8, 7]));
+        $this->compareResultSet($resultSet, $this->getUsersSlice([17, 16, 14, 13, 10, 9, 8, 7]));
     }
 
     /**
      * @test
      */
-    public function countShouldReturnNumberOfRows(): void
+    public function countShouldCountNumberOfRowsInTable(): void
     {
         self::assertSame(30, $this->userRepository->count());
+    }
+
+    /**
+     * @test
+     */
+    public function countShouldReturnExactCountThatMatchesCondition(): void
+    {
         self::assertSame(
             10,
             $this->userRepository->count(null, ['id' => [11, 20], '@operator' => 'BETWEEN'])
@@ -214,9 +230,16 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function sumShouldReturnSumOnColumn(): void
+    public function sumShouldReturnSumOfAllRowsInAColumn(): void
     {
         self::assertSame(20., $this->paymentRepository->sum('count'));
+    }
+
+    /**
+     * @test
+     */
+    public function sumShouldReturnExactSumThatMatchesCondition(): void
+    {
         self::assertSame(
             6.9,
             $this->paymentRepository->sum('value', ['id' => [1, 3], '@operator' => 'BETWEEN'])
@@ -226,7 +249,23 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function averageShouldReturnAverageOnColumn(): void
+    public function sumShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
+    {
+        self::assertNull($this->paymentRepository->sum('value', ['id' => 10, '@operator' => '>']));
+    }
+
+    /**
+     * @test
+     */
+    public function averageShouldCalculateTheAverageOfAllRowsInAColumn(): void
+    {
+        self::assertSame(5.75, $this->paymentRepository->average('value'));
+    }
+
+    /**
+     * @test
+     */
+    public function averageShouldReturnExactAverageThatMatchesCondition(): void
     {
         self::assertSame(
             8.05,
@@ -237,11 +276,25 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function minimumShouldReturnMinimumOnColumn(): void
+    public function averageShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
+    {
+        self::assertNull($this->paymentRepository->average('value', ['id' => 10, '@operator' => '>']));
+    }
+
+    /**
+     * @test
+     */
+    public function minimumShouldReturnMinimumOfAllRowsInAColumn(): void
     {
         self::assertSame('1.15', $this->paymentRepository->minimum('value'));
         self::assertSame('0', $this->paymentRepository->minimum('count'));
+    }
 
+    /**
+     * @test
+     */
+    public function minimumShouldReturnMinimumOfRowsThatMatchesCondition(): void
+    {
         $users            = $this->getUsersSlice(range(1, 10));
         $minimumCreatedAt = array_reduce(
             $users,
@@ -262,11 +315,25 @@ final class RepositoryTest extends TestCase
     /**
      * @test
      */
-    public function maximumShouldReturnMaximumOnColumn(): void
+    public function minimumShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
+    {
+        self::assertNull($this->userRepository->minimum('createdAt', ['id' => 0, '@operator' => '<']));
+    }
+
+    /**
+     * @test
+     */
+    public function maximumShouldReturnMaximumOfAllRowsInAColumn(): void
     {
         self::assertSame('10.35', $this->paymentRepository->maximum('value'));
         self::assertSame('4', $this->paymentRepository->maximum('count'));
+    }
 
+    /**
+     * @test
+     */
+    public function maximumShouldReturnMaximumOfRowsThatMatchesCondition(): void
+    {
         $users            = $this->getUsersSlice(range(8, 21));
         $maximumCreatedAt = array_reduce(
             $users,
@@ -282,6 +349,14 @@ final class RepositoryTest extends TestCase
             $maximumCreatedAt,
             $this->userRepository->maximum('createdAt', ['id' => [8, 21], '@operator' => 'BETWEEN'])
         );
+    }
+
+    /**
+     * @test
+     */
+    public function maximumShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
+    {
+        self::assertNull($this->userRepository->maximum('createdAt', ['id' => 40, '@operator' => '>']));
     }
 
     /**
@@ -304,6 +379,8 @@ final class RepositoryTest extends TestCase
      */
     protected function compareResultSet(SimpleResultset $resultSet, array $expectedUsers): void
     {
+        self::assertCount(count($expectedUsers), $resultSet);
+
         reset($expectedUsers);
         $resultSet->rewind();
         while ($resultSet->valid()) {
@@ -312,7 +389,10 @@ final class RepositoryTest extends TestCase
              */
             $user = $resultSet->current();
             self::assertInstanceOf(User::class, $user);
-            self::assertSame(current($expectedUsers)->toArray(), $user->toArray());
+            self::assertSame(
+                current($expectedUsers)->toArray(),
+                $user->toArray()
+            );
 
             next($expectedUsers);
             $resultSet->next();

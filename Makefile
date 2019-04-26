@@ -17,12 +17,12 @@ default: analyse test
 
 ## Build docker image and store inspection into phalcon-repository-php72.json file
 dev/phalcon-repository-php72.json: dev/Dockerfile
-	docker build --build-arg PHP_VERSION=7.2 --tag=phalcon-repository-php72 dev/
+	docker build --build-arg PHP_MINOR_VERSION=7.2 --tag=phalcon-repository-php72 dev/
 	docker image inspect phalcon-repository-php72 >> dev/phalcon-repository-php72.json
 
 ## Build docker image and store inspection into phalcon-repository-php73.json file
 dev/phalcon-repository-php73.json: dev/Dockerfile
-	docker build --build-arg PHP_VERSION=7.3 --tag=phalcon-repository-php73 dev/
+	docker build --build-arg PHP_MINOR_VERSION=7.3 --tag=phalcon-repository-php73 dev/
 	docker image inspect phalcon-repository-php73 >> dev/phalcon-repository-php73.json
 
 ## Ensure vendor folder exists
