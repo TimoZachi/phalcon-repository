@@ -8,6 +8,7 @@ use Phalcon\Annotations\Adapter\Memory as MemoryAdapter;
 use RuntimeException;
 use TZachi\PhalconRepository\Repository;
 use TZachi\PhalconRepository\RepositoryFactory;
+use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
 use TZachi\PhalconRepository\Tests\Mock\Model\Company;
 use TZachi\PhalconRepository\Tests\Mock\Model\CompanyAnnotationAbsent;
 use TZachi\PhalconRepository\Tests\Mock\Model\CompanyInvalid;
@@ -24,6 +25,11 @@ final class RepositoryFactoryTest extends TestCase
     private $annotations;
 
     /**
+     * @var QueryParameterResolver
+     */
+    private $queryParameterResolver;
+
+    /**
      * @var RepositoryFactory
      */
     private $factory;
@@ -33,8 +39,9 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createDependencies(): void
     {
-        $this->annotations = new MemoryAdapter();
-        $this->factory     = new RepositoryFactory($this->annotations);
+        $this->annotations            = new MemoryAdapter();
+        $this->queryParameterResolver = new QueryParameterResolver();
+        $this->factory                = new RepositoryFactory($this->annotations, $this->queryParameterResolver);
     }
 
     /**
@@ -57,7 +64,7 @@ final class RepositoryFactoryTest extends TestCase
     /**
      * @test
      */
-    public function createShouldUseDefaultRepositoryWhenRepositoryAnnotationWasNotSpecified(): void
+    public function createShouldUseDefaultRepositoryWhenRepositoryAnnotationIsNotSpecified(): void
     {
         // Make sure that the result repository is not an instance of a Repository subclass, but the actual class
         self::assertSame(
@@ -70,7 +77,7 @@ final class RepositoryFactoryTest extends TestCase
      * @test
      * @dataProvider createInvalidData
      */
-    public function createShouldThrowExceptionWithInvalidAnnotation(string $className): void
+    public function createShouldThrowExceptionWhenRepositoryAnnotationIsInvalid(string $className): void
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageRegExp("/Repository class '[^']*' doesn't exists/i");

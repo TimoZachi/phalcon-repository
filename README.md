@@ -25,6 +25,7 @@ Assuming you have a model (that extends Phalcon's Model) called `User`, you can 
 use MyProject\Model\User;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
+use TZachi\PhalconRepository\Resolver\QueryParameter;
 
 $userRepository = new Repository(new ModelWrapper(User::class));
 
@@ -39,7 +40,7 @@ $user = $userRepository->findFirstBy('name', 'Test User Name', ['name' => 'ASC']
 // ordering the results by id DESC.
 $user = $userRepository->findFirstWhere(
     [
-        '@type' => Repository::TYPE_OR,
+        '@type' => QueryParameter::TYPE_OR,
         [
             '@operator' => 'BETWEEN',
             'id' => [15, 21], // Between operator.
@@ -47,7 +48,7 @@ $user = $userRepository->findFirstWhere(
         'id' => [1, 2, 3], // In operator.
         [
             // Type AND is default, doesn't need to be specified. It's explicit here for sample purposes.
-            '@type' => Repository::TYPE_AND,
+            '@type' => QueryParameter::TYPE_AND,
             'name' => 'Timo Zachi', // Equals operator (default).
             [
                 '@operator' => '>',
@@ -121,12 +122,9 @@ use TZachi\PhalconRepository\Repository;
 
 class UserRepository extends Repository
 {
-    /**
-     * @param mixed $id
-     */
-    public function findLastUserCreated($id): User
+    public function findLastUserCreated(): User
     {
-        ...
+        return $this->findFirstWhere([], ['id' => 'DESC']);
     }
 
 ```
@@ -170,20 +168,31 @@ Pull requests are most certainly welcome. The code will be validated against the
 * For some features, a functional test is required 
 
 To make things simpler, a Makefile was created. All you have to do is run:
-```shell
+```bash
 make
 ```
 The `make` command will run all available checks against your code and inform you if any of them fails
 
 If you want to run specific checks:
-```shell
+```bash
+# check code style
 make cs-check
+# static analysis on src directory
 make phpstan-src
+# static analysis on tests directory
 make phpstan-tests
-make test-unit
+# run unit tests on php 7.3
+make test-unit-php73
+# run functional tests on php 7.3
+make test-functional-php73
+```
+
+To fix cs automatically (not all rules can be fixed automatically):
+```bash
+make cs-fix
 ```
 
 ## Notes
 
-Please note that there is still a lot to be done in this project, hopefully by then phalcon will have released
-its 4.0 version so that this project will be able to use it
+Please note that there is still a lot to be done in this project and it is still under development. 
+Hopefully when its done, phalcon will have released its 4.0 version so that this project will be able to use it

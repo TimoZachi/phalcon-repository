@@ -1,27 +1,26 @@
-ARG PHP_VERSION=7.3
-FROM php:${PHP_VERSION}-cli-stretch
+ARG PHP_MINOR_VERSION=7.3
+FROM php:${PHP_MINOR_VERSION}-cli-stretch
+
+# Re-declare the arg so that it can be used in the rest of the dockerfile
+ARG PHP_MINOR_VERSION
 
 # Chosen php ini file depends on the environment specified here, can be either development or production
-ARG PROJECT_ENVIRONMENT=development
+ARG PROJECT_ENV=development
+
+# Phalcon framework version
+ARG PHALCON_FRAMEWORK_VERSION=3.4.3
+
+# Group and user id
+ARG PGID=1000
+ARG PUID=1000
 
 # Remove default html folder
 RUN rm -rf /var/www/html \
     # Istall curl and git
     && apt-get update --yes --quiet && apt-get upgrade --yes --quiet \
-    && apt-get install --yes --no-install-recommends apt-utils curl git sudo \
+    && apt-get install --yes --no-install-recommends apt-utils curl git sudo vim nano \
     # Copy php ini configuration based on environment
-    && cp "/usr/local/etc/php/php.ini-${PROJECT_ENVIRONMENT}" /usr/local/etc/php/php.ini \
-    # Cleanup apt lists directory
-    && rm -rf /var/lib/apt/lists/*
-
-##########################################################################################
-## PHP DEPENDENCIES
-##########################################################################################
-
-# Phalcon framework version
-ARG PHALCON_FRAMEWORK_VERSION=3.4.3
-
-RUN apt-get update --yes --quiet \
+    && cp "/usr/local/etc/php/php.ini-${PROJECT_ENV}" /usr/local/etc/php/php.ini \
     # zip
     && apt-get install --yes --no-install-recommends libzip-dev unzip \
     && docker-php-ext-install zip \
@@ -40,21 +39,17 @@ RUN apt-get update --yes --quiet \
     && docker-php-ext-enable phalcon \
     && cd "$currentDir" \
     && rm -rf "$tempDir" \
-    # Cleanup apt lists directory
-    && rm -rf /var/lib/apt/lists/*
-
-##########################################################################################
-## MACHINE CONFIGURATION AND COMPOSER
-##########################################################################################
-
-ARG PGID=1000
-ARG PUID=1000
-
-# Create a user for composer and make it sudoable without a password prompt
-RUN groupadd --gid=${PGID} docker \
+    # Create a user for composer and make it sudoable without a password prompt
+    && groupadd --gid=${PGID} docker \
     && useradd --gid=${PGID} --uid=${PUID} --shell=/bin/bash --create-home docker \
+    # Make user sudoable
     && echo "docker ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    # Install composer
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    # Cleanup
+    && apt-get clean \
+    && apt-get --yes --purge autoremove \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ENV PATH="$PATH:/home/docker/.composer/vendor/bin"
 
@@ -64,21 +59,3 @@ USER docker
 # Faster composer install inside the container with hirak/prestissimo plugin
 RUN composer global require --no-suggest --no-interaction --no-progress hirak/prestissimo phalcon/devtools \
     && mv /home/docker/.composer/vendor/bin/phalcon.php /home/docker/.composer/vendor/bin/phalcon
-
-##########################################################################################
-## CLEANUP
-##########################################################################################
-
-USER root
-
-# Clean-up image
-RUN apt-get clean \
-    && apt-get purge --yes --auto-remove \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-##########################################################################################
-## FINAL SETUP
-##########################################################################################
-
-# Set the default user to docker
-USER docker

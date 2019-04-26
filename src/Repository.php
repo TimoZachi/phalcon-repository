@@ -4,43 +4,36 @@ declare(strict_types=1);
 
 namespace TZachi\PhalconRepository;
 
-use InvalidArgumentException;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
-use function array_keys;
-use function count;
-use function implode;
-use function in_array;
-use function is_array;
-use function is_int;
-use function range;
-use function sprintf;
-use function strtoupper;
+use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
 
 class Repository
 {
-    public const TYPE_AND = 'AND';
-    public const TYPE_OR  = 'OR';
-
-    protected const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'BETWEEN'];
-
-    protected const CONDITION_TYPES = [self::TYPE_AND, self::TYPE_OR];
-
     /**
      * @var ModelWrapper
      */
     protected $modelWrapper;
 
     /**
+     * @var QueryParameterResolver
+     */
+    protected $queryParameterResolver;
+
+    /**
      * @var string
      */
     protected $idField;
 
-    public function __construct(ModelWrapper $modelWrapper, string $idField = 'id')
-    {
-        $this->modelWrapper = $modelWrapper;
-        $this->idField      = $idField;
+    public function __construct(
+        ModelWrapper $modelWrapper,
+        QueryParameterResolver $queryParameterResolver,
+        string $idField = 'id'
+    ) {
+        $this->modelWrapper           = $modelWrapper;
+        $this->queryParameterResolver = $queryParameterResolver;
+        $this->idField                = $idField;
     }
 
     /**
@@ -49,9 +42,9 @@ class Repository
      * @param mixed[]  $where   Where condition
      * @param string[] $orderBy One or more order by statements
      */
-    public function findFirstWhere(array $where, array $orderBy = []): ?Model
+    public function findFirstWhere(array $where = [], array $orderBy = []): ?Model
     {
-        $parameters = $this->whereToParameters($where) + $this->orderByToParameters($orderBy);
+        $parameters = $this->queryParameterResolver->where($where) + $this->queryParameterResolver->orderBy($orderBy);
 
         $model = $this->modelWrapper->findFirst($parameters);
         if ($model === false) {
@@ -88,25 +81,13 @@ class Repository
      * @param mixed[]  $where
      * @param string[] $orderBy
      */
-    public function findWhere(array $where, array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
+    public function findWhere(array $where = [], array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
     {
-        $parameters = $this->whereToParameters($where) + $this->orderByToParameters($orderBy);
-        if ($limit > 0) {
-            $parameters['offset'] = $offset;
-            $parameters['limit']  = $limit;
-        }
+        $parameters = $this->queryParameterResolver->where($where)
+            + $this->queryParameterResolver->orderBy($orderBy)
+            + $this->queryParameterResolver->limit($limit, $offset);
 
         return $this->modelWrapper->find($parameters);
-    }
-
-    /**
-     * Finds all records in a table
-     *
-     * @param string[] $orderBy
-     */
-    public function findAll(array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
-    {
-        return $this->findWhere([], $orderBy, $limit, $offset);
     }
 
     /**
@@ -140,10 +121,11 @@ class Repository
      */
     public function count(?string $column = null, array $where = []): int
     {
-        $parameters = $this->whereToParameters($where);
+        $parameters = [];
         if ($column !== null) {
-            $parameters['column'] = $column;
+            $parameters += $this->queryParameterResolver->column($column);
         }
+        $parameters += $this->queryParameterResolver->where($where);
 
         return $this->modelWrapper->count($parameters);
     }
@@ -155,7 +137,7 @@ class Repository
      */
     public function sum(string $column, array $where = []): ?float
     {
-        $parameters = ['column' => $column] + $this->whereToParameters($where);
+        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
 
         $sum = $this->modelWrapper->sum($parameters);
         if ($sum === null) {
@@ -172,7 +154,7 @@ class Repository
      */
     public function average(string $column, array $where = []): ?float
     {
-        $parameters = ['column' => $column] + $this->whereToParameters($where);
+        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
 
         $average = $this->modelWrapper->average($parameters);
         if ($average === null) {
@@ -189,7 +171,7 @@ class Repository
      */
     public function minimum(string $column, array $where = []): ?string
     {
-        $parameters = ['column' => $column] + $this->whereToParameters($where);
+        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
 
         return $this->modelWrapper->minimum($parameters);
     }
@@ -201,169 +183,8 @@ class Repository
      */
     public function maximum(string $column, array $where = []): ?string
     {
-        $parameters = ['column' => $column] + $this->whereToParameters($where);
+        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
 
         return $this->modelWrapper->maximum($parameters);
-    }
-
-    /**
-     * @param mixed[] $where
-     *
-     * @return mixed[]
-     *
-     * @throws InvalidArgumentException When where contains invalid values.
-     */
-    public function whereToParameters(array $where, int &$paramsIdx = 0): array
-    {
-        if ($where === []) {
-            return [];
-        }
-
-        $config     = $this->extractConfigFromWhere($where);
-        $conditions = [];
-        $bindings   = [];
-
-        foreach ($where as $field => $value) {
-            if ($value === null) {
-                $conditions[] = '[' . $field . '] IS NULL';
-                continue;
-            }
-
-            if (is_array($value)) {
-                $conditions[] = sprintf(
-                    $this->createConditionsFromArray($config['operator'], $value, $bindings, $paramsIdx),
-                    $field
-                );
-
-                continue;
-            }
-
-            $conditions[]         = sprintf('[%s] %s ?%d', $field, $config['operator'], $paramsIdx);
-            $bindings[$paramsIdx] = $value;
-            $paramsIdx++;
-        }
-
-        return [
-            'conditions' => implode(' ' . $config['type'] . ' ', $conditions),
-            'bind' => $bindings,
-        ];
-    }
-
-    /**
-     * @param mixed[] $where
-     *
-     * @return string[]
-     */
-    protected function extractConfigFromWhere(array &$where): array
-    {
-        $config = [
-            'type' => $where['@type'] ?? self::TYPE_AND,
-            'operator' => $where['@operator'] ?? '=',
-        ];
-
-        if (!in_array($config['operator'], self::OPERATORS, true)) {
-            throw new InvalidArgumentException('Operator ' . $config['operator'] . ' is not a valid operator');
-        }
-
-        foreach (array_keys($config) as $key) {
-            unset($where['@' . $key]);
-        }
-
-        return $config;
-    }
-
-    /**
-     * @param mixed[] $value
-     * @param mixed[] $bindings
-     */
-    protected function createConditionsFromArray(
-        string $operator,
-        array $value,
-        array &$bindings,
-        int &$paramsIdx
-    ): string {
-        if ($value === []) {
-            throw new InvalidArgumentException('Empty array value is not allowed in where conditions');
-        }
-
-        // Check if $value is not an indexed array
-        if (array_keys($value) !== range(0, count($value) - 1)) {
-            $parameters = $this->whereToParameters($value, $paramsIdx);
-            $bindings  += $parameters['bind'];
-
-            return '(' . $parameters['conditions'] . ')';
-        }
-
-        if ($operator === 'BETWEEN') {
-            return '[%s] BETWEEN ' . $this->createBetweenRange($value, $bindings, $paramsIdx);
-        }
-
-        return '[%s] IN (' . $this->createValueList($value, $bindings, $paramsIdx) . ')';
-    }
-
-    /**
-     * @param mixed[]  $values
-     * @param string[] $bindings
-     */
-    protected function createBetweenRange(array $values, array &$bindings, int &$paramsIdx): string
-    {
-        if (count($values) !== 2) {
-            throw new InvalidArgumentException(
-                'Value for between operator must be an array with exactly two values'
-            );
-        }
-
-        $range                    = sprintf('?%d AND ?%d', $paramsIdx, $paramsIdx + 1);
-        $bindings[$paramsIdx]     = $values[0];
-        $bindings[$paramsIdx + 1] = $values[1];
-
-        $paramsIdx += 2;
-
-        return $range;
-    }
-
-    /**
-     * @param mixed[]  $values
-     * @param string[] $bindings
-     */
-    protected function createValueList(array $values, array &$bindings, int &$paramsIdx): string
-    {
-        $list = '';
-        foreach ($values as $i => $value) {
-            $list                .= sprintf('%s?%d', $i === 0 ? '' : ', ', $paramsIdx);
-            $bindings[$paramsIdx] = $value;
-
-            $paramsIdx++;
-        }
-
-        return $list;
-    }
-
-    /**
-     * @param string[] $orderBy
-     *
-     * @return string[]
-     */
-    public function orderByToParameters(array $orderBy): array
-    {
-        if ($orderBy === []) {
-            return [];
-        }
-
-        $orderByStatements = [];
-        foreach ($orderBy as $sortField => $origSortOrder) {
-            $sortOrder = 'ASC';
-            if (strtoupper($origSortOrder) === 'DESC') {
-                $sortOrder = 'DESC';
-            }
-
-            if (is_int($sortField)) {
-                $sortField = $origSortOrder;
-            }
-
-            $orderByStatements[] = '[' . $sortField . '] ' . $sortOrder;
-        }
-
-        return ['order' => implode(', ', $orderByStatements)];
     }
 }
