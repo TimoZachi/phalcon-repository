@@ -1,11 +1,13 @@
 {
   "name": "tzachi/phalcon-repository",
   "type": "library",
-  "description": "A library for implementing the repository pattern in projects using the Phalcon PHP Framework",
+  "description": "Phalcon repository is a library for implementing the repositories pattern in projects that use the Phalcon framework",
   "keywords": [
     "phalcon",
+    "repo",
     "repository",
-    "repo"
+    "repositories",
+    "pattern"
   ],
   "license": "BSD-3-Clause",
   "authors": [
