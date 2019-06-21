@@ -1,1 +1,3 @@
 *.json
+*.phar
+*.phar.pubkey

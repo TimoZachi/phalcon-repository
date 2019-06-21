@@ -17,6 +17,7 @@ use function current;
 use function next;
 use function range;
 use function reset;
+use function rtrim;
 
 /**
  * @coversDefaultClass Repository
@@ -55,28 +56,54 @@ final class RepositoryTest extends TestCase
 
         $faker = Factory::create();
 
-        // Seed users table
+        // Seed users table. Done with raw sql for a quicker insert
+        $insertSQL = "INSERT INTO `users` (`id`, `name`, `email`, `created_at`) VALUES \n";
+        $params    = [];
         for ($i = 1; $i <= 30; $i++) {
-            $user            = new User();
-            $user->id        = $i;
-            $user->name      = $faker->unique()->name;
-            $user->email     = $faker->unique()->email;
-            $user->createdAt = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
-            $user->save();
+            $insertSQL .= "  (?, ?, ?, ?), \n";
+            $params[]   = $i;
+            $params[]   = $faker->unique()->name;
+            $params[]   = $faker->unique()->email;
+            $params[]   = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
+        }
+        $insertSQL = rtrim($insertSQL, ", \n");
+        self::executeSQL($insertSQL, $params);
 
-            self::$users[$i] = $user;
+        /**
+         * @var SimpleResultset $resultSet
+         */
+        $resultSet   = User::find();
+        self::$users = [];
+        foreach ($resultSet as $user) {
+            /**
+             * @var User $user
+             */
+            self::$users[$user->id] = $user;
         }
 
-        // Seed payments table
+        // Seed payments table. Done with raw sql for quicker insert
+        $insertSQL = "INSERT INTO `payments` (`id`, `value`, `count`, `created_at`) VALUES \n";
+        $params    = [];
         for ($i = 1; $i < 10; $i++) {
-            $payment            = new Payment();
-            $payment->id        = $i;
-            $payment->value     = 1.15 * $i;
-            $payment->count     = $i % 5;
-            $payment->createdAt = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
-            $payment->save();
+            $insertSQL .= "  (?, ?, ?, ?), \n";
+            $params[]   = $i;
+            $params[]   = 1.15 * $i;
+            $params[]   = $i % 5;
+            $params[]   = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
+        }
+        $insertSQL = rtrim($insertSQL, ", \n");
+        self::executeSQL($insertSQL, $params);
 
-            self::$payments[$i] = $payment;
+        /**
+         * @var SimpleResultset $resultSet
+         */
+        $resultSet      = Payment::find();
+        self::$payments = [];
+        foreach ($resultSet as $payment) {
+            /**
+             * @var Payment $payment
+             */
+            self::$payments[$payment->id] = $payment;
         }
     }
 
