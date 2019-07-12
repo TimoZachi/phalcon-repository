@@ -213,8 +213,67 @@ final class RepositoryTest extends TestCase
 
     /**
      * @test
+     * @dataProvider provideOperatorConditionAndExpectedResult
+     *
+     * @param int[]   $expectedUserIds
+     * @param mixed[] $where
      */
-    public function findWhereShouldReturnCorrectResultSetThatMatchesCondition(): void
+    public function findWhereShouldReturnResultSetThatMatchesOperatorCondition(
+        array $where,
+        array $expectedUserIds
+    ): void {
+        $this->compareResultSet($this->userRepository->findWhere($where), $this->getUsersSlice($expectedUserIds));
+    }
+
+    /**
+     * @return mixed[]
+     */
+    public function provideOperatorConditionAndExpectedResult(): array
+    {
+        return [
+            'IN' => [
+                ['@operator' => '=', 'id' => [1, 2, 3]],
+                [1, 2, 3],
+            ],
+            'NOT IN' => [
+                ['@operator' => '<>', 'id' => range(11, 30)],
+                range(1, 10),
+            ],
+            '=' => [
+                ['@operator' => '=', 'id' => 1],
+                [1],
+            ],
+            '<>' => [
+                ['@operator' => '<>', 'id' => 1],
+                range(2, 30),
+            ],
+            '<=' => [
+                ['@operator' => '<=', 'id' => 3],
+                [1, 2, 3],
+            ],
+            '>=' => [
+                ['@operator' => '>=', 'id' => 28],
+                [28, 29, 30],
+            ],
+            '<' => [
+                ['@operator' => '<', 'id' => 2],
+                [1],
+            ],
+            '>' => [
+                ['@operator' => '>', 'id' => 29],
+                [30],
+            ],
+            'BETWEEN' => [
+                ['@operator' => 'BETWEEN', 'id' => [23, 25]],
+                [23, 24, 25],
+            ],
+        ];
+    }
+
+    /**
+     * @test
+     */
+    public function findWhereShouldReturnCorrectResultSetThatMatchesConditionOrderAndLimit(): void
     {
         $resultSet = $this->userRepository->findWhere(
             [

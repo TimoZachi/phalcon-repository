@@ -26,7 +26,7 @@ class QueryParameter
     public const ORDER_ASC  = 'ASC';
     public const ORDER_DESC = 'DESC';
 
-    protected const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'BETWEEN'];
+    protected const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'LIKE', 'BETWEEN'];
 
     protected const CONDITION_TYPES = [self::TYPE_AND, self::TYPE_OR];
 
@@ -169,7 +169,7 @@ class QueryParameter
     protected function validateValueForOperator(string $operator, $value): void
     {
         if (is_array($value)) {
-            if (!in_array($operator, ['=', 'BETWEEN'], true)) {
+            if (!in_array($operator, ['=', '<>', 'BETWEEN'], true)) {
                 throw new InvalidArgumentException('Operator ' . $operator . ' cannot have an array as its value');
             }
 
@@ -205,7 +205,12 @@ class QueryParameter
             return '(' . $parameters['conditions'] . ')';
         }
 
-        return sprintf('[%s] IN (%s)', $field, $this->createInCondition($value, $bindings, $this->bindingIndex));
+        return sprintf(
+            '[%s] %sIN (%s)',
+            $field,
+            $operator === '=' ? '' : 'NOT ',
+            $this->createInCondition($value, $bindings)
+        );
     }
 
     /**
@@ -233,14 +238,14 @@ class QueryParameter
      * @param mixed[]  $values
      * @param string[] $bindings
      */
-    protected function createInCondition(array $values, array &$bindings, int &$paramsIdx): string
+    protected function createInCondition(array $values, array &$bindings): string
     {
         $condition = '';
         foreach ($values as $i => $value) {
-            $condition           .= sprintf('%s?%d', $i === 0 ? '' : ', ', $paramsIdx);
-            $bindings[$paramsIdx] = $value;
+            $condition                    .= sprintf('%s?%d', $i === 0 ? '' : ', ', $this->bindingIndex);
+            $bindings[$this->bindingIndex] = $value;
 
-            $paramsIdx++;
+            $this->bindingIndex++;
         }
 
         return $condition;

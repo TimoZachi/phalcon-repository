@@ -31,7 +31,7 @@ class QueryParameterTest extends TestCase
      * @param mixed[] $expected
      * @param mixed[] $where
      */
-    public function whereShouldResolveValidParameters(array $expected, array $where): void
+    public function whereShouldResolveToValidParameters(array $expected, array $where): void
     {
         self::assertSame($expected, $this->queryParameter->where($where));
     }
@@ -57,8 +57,8 @@ class QueryParameterTest extends TestCase
             'Simple where with different operators' => [
                 [
                     'conditions' => '[test] IS NULL AND ([dateField] BETWEEN ?0 AND ?1) AND ' .
-                        '([numericField] > ?2) AND ([numericField] <= ?3)',
-                    'bind' => ['2019-01-01', '2019-01-31', 50, 150],
+                        '([numericField] > ?2) AND ([numericField] <= ?3) AND ([stringField] LIKE ?4)',
+                    'bind' => ['2019-01-01', '2019-01-31', 50, 150, 'Timo%'],
                 ],
                 [
                     'test' => null,
@@ -74,14 +74,19 @@ class QueryParameterTest extends TestCase
                         '@operator' => '<=',
                         'numericField' => 150,
                     ],
+                    [
+                        '@operator' => 'LIKE',
+                        'stringField' => 'Timo%',
+                    ],
                 ],
             ],
             'Composite where' => [
                 [
                     'conditions' => '[test] IN (?0, ?1, ?2) '
                         . 'AND ([test3] = ?3 OR [test4] = ?4 OR ([test5] = ?5 AND [test6] = ?6)) '
-                        . 'AND ([test7] = ?7 OR [test8] = ?8) AND ([numericField] BETWEEN ?9 AND ?10)',
-                    'bind' => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 1, 10],
+                        . 'AND ([test7] = ?7 OR [test8] = ?8) AND ([numericField] BETWEEN ?9 AND ?10) '
+                        . 'AND ([numericField2] NOT IN (?11, ?12))',
+                    'bind' => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 1, 10, 9, 20],
                 ],
                 [
                     'test' => ['zero', 'one', 'two'],
@@ -104,6 +109,10 @@ class QueryParameterTest extends TestCase
                         '@operator' => 'BETWEEN',
                         'numericField' => [1, 10],
                     ],
+                    [
+                        '@operator' => '<>',
+                        'numericField2' => [9, 20],
+                    ],
                 ],
             ],
         ];
@@ -111,8 +120,8 @@ class QueryParameterTest extends TestCase
 
     /**
      * @test
-     * @depends whereShouldResolveValidParameters
-     * @dataProvider provideOperatorsThatNeedAnArrayAsTheirValue
+     * @depends whereShouldResolveToValidParameters
+     * @dataProvider provideOperatorsThatNeedAnArrayValue
      */
     public function whereShouldThrowExceptionWhenOperatorValueShouldBeAnArrayAndItIsNot(string $operator): void
     {
@@ -128,7 +137,7 @@ class QueryParameterTest extends TestCase
     /**
      * @return mixed[]
      */
-    public function provideOperatorsThatNeedAnArrayAsTheirValue(): array
+    public function provideOperatorsThatNeedAnArrayValue(): array
     {
         // At the moment, only the between operator must have an array as its value
         return [
@@ -138,7 +147,8 @@ class QueryParameterTest extends TestCase
 
     /**
      * @test
-     * @dataProvider provideOperatorsThatCannotHaveAnArrayAsTheirValue
+     * @depends whereShouldResolveToValidParameters
+     * @dataProvider provideOperatorsThatCannotHaveAnArrayValue
      */
     public function whereShouldThrowAnExceptionWhenOperatorValueShouldNotBeAnArrayAndItIs(string $operator): void
     {
@@ -147,27 +157,57 @@ class QueryParameterTest extends TestCase
 
         $this->queryParameter->where([
             '@operator' => $operator,
-            'field1' => [1, 2, 3],
+            'field' => [1, 2, 3],
         ]);
     }
 
     /**
      * @return mixed[]
      */
-    public function provideOperatorsThatCannotHaveAnArrayAsTheirValue(): array
+    public function provideOperatorsThatCannotHaveAnArrayValue(): array
     {
         return [
-            ['<>'],
             ['<='],
             ['>='],
             ['<'],
             ['>'],
+            ['LIKE'],
         ];
     }
 
     /**
      * @test
-     * @depends whereShouldResolveValidParameters
+     * @depends whereShouldResolveToValidParameters
+     * @dataProvider provideOperatorsThatCanHaveArrayAndScalarValues
+     */
+    public function whereShouldAllowArrayAndScalarForCertainOperators(string $operator): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        $this->queryParameter->where([
+            '@operator' => $operator,
+            'field' => [1, 2, 3],
+        ]);
+        $this->queryParameter->where([
+            '@operator' => $operator,
+            'field' => 'value',
+        ]);
+    }
+
+    /**
+     * @return mixed[]
+     */
+    public function provideOperatorsThatCanHaveArrayAndScalarValues(): array
+    {
+        return [
+            ['='],
+            ['<>'],
+        ];
+    }
+
+    /**
+     * @test
+     * @depends whereShouldResolveToValidParameters
      */
     public function whereShouldThrowExceptionWhenBetweenValueIsInvalid(): void
     {
@@ -182,7 +222,7 @@ class QueryParameterTest extends TestCase
 
     /**
      * @test
-     * @depends whereShouldResolveValidParameters
+     * @depends whereShouldResolveToValidParameters
      */
     public function whereShouldThrowExceptionWhenArrayValueIsEmpty(): void
     {
@@ -194,7 +234,7 @@ class QueryParameterTest extends TestCase
 
     /**
      * @test
-     * @depends whereShouldResolveValidParameters
+     * @depends whereShouldResolveToValidParameters
      */
     public function whereShouldThrowExceptionWhenConfigOperatorIsInvalid(): void
     {
@@ -209,7 +249,7 @@ class QueryParameterTest extends TestCase
 
     /**
      * @test
-     * @depends whereShouldResolveValidParameters
+     * @depends whereShouldResolveToValidParameters
      */
     public function whereShouldThrowExceptionWhenConfigTypeIsInvalid(): void
     {
