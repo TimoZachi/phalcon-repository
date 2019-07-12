@@ -123,7 +123,7 @@ class Repository
     {
         $parameters = [];
         if ($column !== null) {
-            $parameters += $this->queryParameterResolver->column($column);
+            $parameters = $this->queryParameterResolver->column($column);
         }
         $parameters += $this->queryParameterResolver->where($where);
 

@@ -14,6 +14,9 @@ ARG PHALCON_FRAMEWORK_VERSION=3.4.3
 ARG PGID=1000
 ARG PUID=1000
 
+# Install xdebug
+ARG INSTALL_XDEBUG=true
+
 # Remove default html folder
 RUN rm -rf /var/www/html \
     # Istall curl and git
@@ -26,9 +29,11 @@ RUN rm -rf /var/www/html \
     && docker-php-ext-install zip \
     # Mysql
     && docker-php-ext-install mysqli pdo_mysql \
-    # XDebug
-    && pecl install xdebug \
-    && docker-php-ext-enable xdebug \
+    && if [ ${INSTALL_XDEBUG} = true ]; then \
+        # XDebug
+        pecl install xdebug \
+        && docker-php-ext-enable xdebug \
+    ;fi \
     # Phalcon framework
     && currentDir=$(pwd) \
     && tempDir=$(mktemp -d) \
@@ -57,5 +62,4 @@ ENV PATH="$PATH:/home/docker/.composer/vendor/bin"
 USER docker
 
 # Faster composer install inside the container with hirak/prestissimo plugin
-RUN composer global require --no-suggest --no-interaction --no-progress hirak/prestissimo phalcon/devtools \
-    && mv /home/docker/.composer/vendor/bin/phalcon.php /home/docker/.composer/vendor/bin/phalcon
+RUN composer global require --no-suggest --no-interaction --no-progress hirak/prestissimo phalcon/devtools

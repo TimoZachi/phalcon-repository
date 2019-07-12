@@ -56,12 +56,16 @@ class QueryParameterTest extends TestCase
             ],
             'Simple where with different operators' => [
                 [
-                    'conditions' => '[test] IS NULL AND ([numericField] > ?0) AND ([numericField] <= ?1) '
-                        . 'AND ([dateField] BETWEEN ?2 AND ?3)',
-                    'bind' => [50, 150, '2019-01-01', '2019-01-31'],
+                    'conditions' => '[test] IS NULL AND ([dateField] BETWEEN ?0 AND ?1) AND ' .
+                        '([numericField] > ?2) AND ([numericField] <= ?3)',
+                    'bind' => ['2019-01-01', '2019-01-31', 50, 150],
                 ],
                 [
                     'test' => null,
+                    [
+                        '@operator' => 'BETWEEN',
+                        'dateField' => ['2019-01-01', '2019-01-31'],
+                    ],
                     [
                         '@operator' => '>',
                         'numericField' => 50,
@@ -69,10 +73,6 @@ class QueryParameterTest extends TestCase
                     [
                         '@operator' => '<=',
                         'numericField' => 150,
-                    ],
-                    [
-                        '@operator' => 'BETWEEN',
-                        'dateField' => ['2019-01-01', '2019-01-31'],
                     ],
                 ],
             ],
@@ -279,6 +279,14 @@ class QueryParameterTest extends TestCase
     public function limitShouldResolveToEmptyArrayWhenZeroIsSpecifiedAsLimit(): void
     {
         static::assertSame([], $this->queryParameter->limit(0));
+    }
+
+    /**
+     * @test
+     */
+    public function limitShouldDefaultOffsetToZero(): void
+    {
+        static::assertSame(['limit' => 10, 'offset' => 0], $this->queryParameter->limit(10));
     }
 
     /**
