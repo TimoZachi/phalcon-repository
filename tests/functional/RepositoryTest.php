@@ -8,6 +8,7 @@ use Faker\Factory;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
+use TZachi\PhalconRepository\Resolver\Parameter;
 use TZachi\PhalconRepository\Resolver\QueryParameter;
 use TZachi\PhalconRepository\Tests\Mock\Model\Payment;
 use TZachi\PhalconRepository\Tests\Mock\Model\User;
@@ -162,7 +163,7 @@ final class RepositoryTest extends TestCase
     public function findFirstWhereShouldReturnModelThatMatchesCondition(): void
     {
         $conditions = [
-            '@type' => QueryParameter::TYPE_OR,
+            '@type' => Parameter::TYPE_OR,
             'name' => self::$users[26]->name,
             'email' => self::$users[28]->email,
         ];
@@ -188,7 +189,7 @@ final class RepositoryTest extends TestCase
     public function findFirstWhereShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
     {
         $conditions = [
-            '@type' => QueryParameter::TYPE_AND,
+            '@type' => Parameter::TYPE_AND,
             'name' => self::$users[26]->name, // Switched name with email
             'email' => self::$users[28]->email,
         ];
@@ -277,7 +278,7 @@ final class RepositoryTest extends TestCase
     {
         $resultSet = $this->userRepository->findWhere(
             [
-                '@type' => QueryParameter::TYPE_OR,
+                '@type' => Parameter::TYPE_OR,
                 [
                     '@operator' => 'BETWEEN',
                     'id' => [16, 21],

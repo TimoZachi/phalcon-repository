@@ -14,6 +14,7 @@ DOCKER_RUN = docker run --tty --interactive --rm --volume="$$PWD":/project --wor
 DOCKER_RUN_72 = $(DOCKER_RUN) $(PROJECT_NAME)-php72
 DOCKER_RUN_73 = $(DOCKER_RUN) $(PROJECT_NAME)-php73
 DOCKER_RUN_73_BENCHMARK = $(DOCKER_RUN) $(PROJECT_NAME)-php73-benchmark
+IMAGE_IDS = $(shell docker images | grep $(PROJECT_NAME) | awk '{print $$3}')
 
 .PHONY: default analyse validate cs-check cs-fix phpstan phpstan-src phpstan-tests benchmark
 
@@ -44,9 +45,11 @@ $(PHPCBF): vendor
 $(PHPSTAN): vendor
 $(PHPUNIT): vendor
 
-$(PHPBENCH):
-	curl -o $(PHPBENCH) https://phpbench.github.io/phpbench/phpbench.phar
+$(PHPBENCH).pubkey:
 	curl -o $(PHPBENCH).pubkey https://phpbench.github.io/phpbench/phpbench.phar.pubkey
+
+$(PHPBENCH): $(PHPBENCH).pubkey
+	curl -o $(PHPBENCH) https://phpbench.github.io/phpbench/phpbench.phar
 	chmod +x $(PHPBENCH)
 
 $(INFECTION):
@@ -82,10 +85,10 @@ phpstan-tests: dev/$(PROJECT_NAME)-php73.json $(PHPSTAN) vendor phpstan-tests.ne
 benchmark: dev/$(PROJECT_NAME)-php73-benchmark.json $(PHPBENCH)
 	$(DOCKER_RUN_73_BENCHMARK) $(PHPBENCH) run --progress=dots --report=aggregate
 
-.PHONY: test test-unit-php72 test-unit-php73 test-functional-php72 test-functional-php73 test-mutation
+.PHONY: test test-unit-php72 test-unit-php73 test-functional-php72 test-functional-php73 coverage test-mutation
 
 ## All tests
-test: test-unit-php72 test-unit-php73 test-functional-php72 test-functional-php73 test-mutation
+test: test-unit-php72 test-unit-php73 test-functional-php72 test-functional-php73 coverage test-mutation
 
 ## Unit tests
 test-unit-php72: $(PHPUNIT) vendor dev/$(PROJECT_NAME)-php72.json
@@ -93,7 +96,7 @@ test-unit-php72: $(PHPUNIT) vendor dev/$(PROJECT_NAME)-php72.json
 
 ## Unit tests
 test-unit-php73: $(PHPUNIT) vendor dev/$(PROJECT_NAME)-php73.json
-	$(DOCKER_RUN_73) $(PHPUNIT) --coverage-text --testsuite=Unit
+	$(DOCKER_RUN_73) $(PHPUNIT) --testsuite=Unit
 
 ## Functional tests
 test-functional-php72: $(PHPUNIT) vendor dev/$(PROJECT_NAME)-php72.json
@@ -103,9 +106,15 @@ test-functional-php72: $(PHPUNIT) vendor dev/$(PROJECT_NAME)-php72.json
 test-functional-php73: $(PHPUNIT) vendor dev/$(PROJECT_NAME)-php73.json
 	$(DOCKER_RUN_73) $(PHPUNIT) --testsuite=Functional
 
-test-mutation: dev/$(PROJECT_NAME)-php73.json $(INFECTION)
+## Generate code coverage report
+coverage: $(PHPUNIT) dev/$(PROJECT_NAME)-php73.json
+	@rm -rf coverage/
+	$(DOCKER_RUN_73) $(PHPUNIT) --coverage-html="coverage/" --testsuite=Unit
+
+## Mutation tests
+test-mutation: $(INFECTION) dev/$(PROJECT_NAME)-php73.json
 	$(DOCKER_RUN_73) $(INFECTION) --show-mutations --test-framework-options="--testsuite=Unit" \
-	 	--threads=$(nproc) --min-msi=90 --min-covered-msi=90
+	 	--threads=$(nproc) --min-msi=95 --min-covered-msi=95
 
 ############################################################################################
 ## HELPERS
@@ -117,8 +126,9 @@ test-mutation: dev/$(PROJECT_NAME)-php73.json $(INFECTION)
 docker-attach: dev/$(PROJECT_NAME)-php73.json
 	$(DOCKER_RUN_73) /bin/bash
 
-## Cleanup images and files
-env-cleanup:
+## Cleanup images and binary files from this repository
+cleanup:
 	rm -f dev/*.json
 	rm -f dev/*.phar*
-	docker rmi $(docker images | grep $(PROJECT_NAME) | awk '{print $3}')
+	@if [ "$(IMAGE_IDS)" != "" ]; then echo "Removing docker image ids $(IMAGE_IDS)"; docker rmi $(IMAGE_IDS); fi
+	@echo "To really cleanup the docker images use: docker system prune"

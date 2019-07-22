@@ -7,7 +7,7 @@ namespace TZachi\PhalconRepository;
 use Phalcon\Mvc\Model;
 use Phalcon\Mvc\Model\Criteria;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
-use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
+use TZachi\PhalconRepository\Resolver\Parameter as ParameterResolver;
 
 class Repository
 {
@@ -17,9 +17,9 @@ class Repository
     protected $modelWrapper;
 
     /**
-     * @var QueryParameterResolver
+     * @var ParameterResolver
      */
-    protected $queryParameterResolver;
+    protected $parameterResolver;
 
     /**
      * @var string
@@ -28,12 +28,12 @@ class Repository
 
     public function __construct(
         ModelWrapper $modelWrapper,
-        QueryParameterResolver $queryParameterResolver,
+        ParameterResolver $parameterResolver,
         string $idField = 'id'
     ) {
-        $this->modelWrapper           = $modelWrapper;
-        $this->queryParameterResolver = $queryParameterResolver;
-        $this->idField                = $idField;
+        $this->modelWrapper      = $modelWrapper;
+        $this->parameterResolver = $parameterResolver;
+        $this->idField           = $idField;
     }
 
     /**
@@ -44,7 +44,7 @@ class Repository
      */
     public function findFirstWhere(array $where = [], array $orderBy = []): ?Model
     {
-        $parameters = $this->queryParameterResolver->where($where) + $this->queryParameterResolver->orderBy($orderBy);
+        $parameters = $this->parameterResolver->where($where) + $this->parameterResolver->orderBy($orderBy);
 
         $model = $this->modelWrapper->findFirst($parameters);
         if ($model === false) {
@@ -83,9 +83,9 @@ class Repository
      */
     public function findWhere(array $where = [], array $orderBy = [], int $limit = 0, int $offset = 0): SimpleResultset
     {
-        $parameters = $this->queryParameterResolver->where($where)
-            + $this->queryParameterResolver->orderBy($orderBy)
-            + $this->queryParameterResolver->limit($limit, $offset);
+        $parameters = $this->parameterResolver->where($where)
+            + $this->parameterResolver->orderBy($orderBy)
+            + $this->parameterResolver->limit($limit, $offset);
 
         return $this->modelWrapper->find($parameters);
     }
@@ -123,9 +123,9 @@ class Repository
     {
         $parameters = [];
         if ($column !== null) {
-            $parameters = $this->queryParameterResolver->column($column);
+            $parameters = $this->parameterResolver->column($column);
         }
-        $parameters += $this->queryParameterResolver->where($where);
+        $parameters += $this->parameterResolver->where($where);
 
         return $this->modelWrapper->count($parameters);
     }
@@ -137,7 +137,7 @@ class Repository
      */
     public function sum(string $column, array $where = []): ?float
     {
-        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
+        $parameters = $this->parameterResolver->column($column) + $this->parameterResolver->where($where);
 
         $sum = $this->modelWrapper->sum($parameters);
         if ($sum === null) {
@@ -154,7 +154,7 @@ class Repository
      */
     public function average(string $column, array $where = []): ?float
     {
-        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
+        $parameters = $this->parameterResolver->column($column) + $this->parameterResolver->where($where);
 
         $average = $this->modelWrapper->average($parameters);
         if ($average === null) {
@@ -171,7 +171,7 @@ class Repository
      */
     public function minimum(string $column, array $where = []): ?string
     {
-        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
+        $parameters = $this->parameterResolver->column($column) + $this->parameterResolver->where($where);
 
         return $this->modelWrapper->minimum($parameters);
     }
@@ -183,8 +183,16 @@ class Repository
      */
     public function maximum(string $column, array $where = []): ?string
     {
-        $parameters = $this->queryParameterResolver->column($column) + $this->queryParameterResolver->where($where);
+        $parameters = $this->parameterResolver->column($column) + $this->parameterResolver->where($where);
 
         return $this->modelWrapper->maximum($parameters);
+    }
+
+    /**
+     * Returns the current parameter resolver that is being used
+     */
+    public function getParameterResolver(): ParameterResolver
+    {
+        return $this->parameterResolver;
     }
 }

@@ -16,32 +16,17 @@ use function sprintf;
 use function strtoupper;
 
 /**
- * Class to map repository arguments to parameters that can be used in phalcon models
+ * Class to map query arguments to parameters that can be used in phalcon models
  */
-class QueryParameter
+class QueryParameter implements Parameter
 {
-    public const TYPE_AND = 'AND';
-    public const TYPE_OR  = 'OR';
-
-    public const ORDER_ASC  = 'ASC';
-    public const ORDER_DESC = 'DESC';
-
-    protected const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'LIKE', 'BETWEEN'];
-
-    protected const CONDITION_TYPES = [self::TYPE_AND, self::TYPE_OR];
-
     /**
      * @var int
      */
     protected $bindingIndex;
 
     /**
-     * @param mixed[] $where
-     * @param int     $bindingStartIndex If specified, parameter binding will start from index
-     *
-     * @return mixed[]
-     *
-     * @throws InvalidArgumentException When a condition contains an invalid value
+     * {@inheritdoc}
      */
     public function where(array $where, int $bindingStartIndex = 0): array
     {
@@ -80,11 +65,9 @@ class QueryParameter
     }
 
     /**
-     * @param string[] $orderBy
+     * {@inheritdoc}
      *
      * @return string[]
-     *
-     * @throws InvalidArgumentException When sort direction is invalid
      */
     public function orderBy(array $orderBy): array
     {
@@ -114,6 +97,8 @@ class QueryParameter
     }
 
     /**
+     * {@inheritdoc}
+     *
      * @return int[]
      */
     public function limit(int $limit, int $offset = 0): array
@@ -128,6 +113,8 @@ class QueryParameter
     }
 
     /**
+     * {@inheritdoc}
+     *
      * @return string[]
      */
     public function column(string $columnName): array
@@ -169,7 +156,7 @@ class QueryParameter
     protected function validateValueForOperator(string $operator, $value): void
     {
         if (is_array($value)) {
-            if (!in_array($operator, ['=', '<>', 'BETWEEN'], true)) {
+            if (!in_array($operator, ['=', 'BETWEEN'], true)) {
                 throw new InvalidArgumentException('Operator ' . $operator . ' cannot have an array as its value');
             }
 
@@ -190,7 +177,7 @@ class QueryParameter
     protected function createConditionsFromArray(string $operator, $field, array $value, array &$bindings): string
     {
         if ($value === []) {
-            throw new InvalidArgumentException('Empty array value is not allowed in where condition');
+            throw new InvalidArgument('Empty array value is not allowed in where condition');
         }
 
         if ($operator === 'BETWEEN') {
@@ -205,12 +192,7 @@ class QueryParameter
             return '(' . $parameters['conditions'] . ')';
         }
 
-        return sprintf(
-            '[%s] %sIN (%s)',
-            $field,
-            $operator === '=' ? '' : 'NOT ',
-            $this->createInCondition($value, $bindings)
-        );
+        return sprintf('[%s] IN (%s)', $field, $this->createInCondition($value, $bindings, $this->bindingIndex));
     }
 
     /**
@@ -238,14 +220,14 @@ class QueryParameter
      * @param mixed[]  $values
      * @param string[] $bindings
      */
-    protected function createInCondition(array $values, array &$bindings): string
+    protected function createInCondition(array $values, array &$bindings, int &$paramsIdx): string
     {
         $condition = '';
         foreach ($values as $i => $value) {
-            $condition                    .= sprintf('%s?%d', $i === 0 ? '' : ', ', $this->bindingIndex);
-            $bindings[$this->bindingIndex] = $value;
+            $condition           .= sprintf('%s?%d', $i === 0 ? '' : ', ', $paramsIdx);
+            $bindings[$paramsIdx] = $value;
 
-            $this->bindingIndex++;
+            $paramsIdx++;
         }
 
         return $condition;

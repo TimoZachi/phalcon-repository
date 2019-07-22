@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use TZachi\PhalconRepository\Repository;
 use TZachi\PhalconRepository\RepositoryFactory;
-use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
+use TZachi\PhalconRepository\Resolver\Parameter as ParameterResolver;
 use TZachi\PhalconRepository\Tests\Mock\Repository\Company as CompanyRepository;
 use function get_class;
 
@@ -41,9 +41,9 @@ final class RepositoryFactoryTest extends TestCase
     private $annotations;
 
     /**
-     * @var QueryParameterResolver|MockObject
+     * @var ParameterResolver|MockObject
      */
-    private $queryParameterResolver;
+    private $parameterResolver;
 
     /**
      * @var RepositoryFactory
@@ -55,12 +55,12 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createDependencies(): void
     {
-        $this->annotation             = $this->createMock(Annotation::class);
-        $this->collection             = $this->createMock(Collection::class);
-        $this->reflection             = $this->createMock(Reflection::class);
-        $this->annotations            = $this->createMock(AnnotationsAdapterInterface::class);
-        $this->queryParameterResolver = $this->createMock(QueryParameterResolver::class);
-        $this->factory                = new RepositoryFactory($this->annotations, $this->queryParameterResolver);
+        $this->annotation        = $this->createMock(Annotation::class);
+        $this->collection        = $this->createMock(Collection::class);
+        $this->reflection        = $this->createMock(Reflection::class);
+        $this->annotations       = $this->createMock(AnnotationsAdapterInterface::class);
+        $this->parameterResolver = $this->createMock(ParameterResolver::class);
+        $this->factory           = new RepositoryFactory($this->annotations, $this->parameterResolver);
     }
 
     /**
@@ -104,6 +104,18 @@ final class RepositoryFactoryTest extends TestCase
 
         // Make sure that the result repository is not an instance of a Repository subclass, but the actual class
         self::assertSame(Repository::class, get_class($this->factory->create('Model')));
+    }
+
+    /**
+     * @test
+     * @depends createShouldUseDefaultRepositoryWhenThereAreNoAnnotations
+     */
+    public function createShouldReceiveCorrectUseSpecifiedParameterResolver(): void
+    {
+        $this->createScenarioForTest(false, false, null);
+
+        $repository = $this->factory->create('Model');
+        self::assertSame($this->parameterResolver, $repository->getParameterResolver());
     }
 
     /**

@@ -7,6 +7,7 @@ namespace TZachi\PhalconRepository\Tests\Benchmark\Resolver;
 use PhpBench\Benchmark\Metadata\Annotations\BeforeMethods;
 use PhpBench\Benchmark\Metadata\Annotations\Iterations;
 use PhpBench\Benchmark\Metadata\Annotations\Revs;
+use TZachi\PhalconRepository\Resolver\Parameter;
 use TZachi\PhalconRepository\Resolver\QueryParameter;
 
 /**
@@ -31,17 +32,17 @@ final class QueryParameterBench
         $this->queryParameter->where([
             'test' => ['zero', 'one', 'two'],
             [
-                '@type' => QueryParameter::TYPE_OR,
+                '@type' => Parameter::TYPE_OR,
                 'test3' => 'three',
                 'test4' => 'four',
                 [
-                    '@type' => QueryParameter::TYPE_AND,
+                    '@type' => Parameter::TYPE_AND,
                     'test5' => 'five',
                     'test6' => 'six',
                 ],
             ],
             [
-                '@type' => QueryParameter::TYPE_OR,
+                '@type' => Parameter::TYPE_OR,
                 'test7' => 'seven',
                 'test8' => 'eight',
             ],
