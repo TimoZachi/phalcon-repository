@@ -64,8 +64,12 @@ final class RepositoryTest extends TestCase
             $insertSQL .= "  (?, ?, ?, ?), \n";
             $params[]   = $i;
             $params[]   = $faker->unique()->name;
-            $params[]   = $faker->unique()->email;
-            $params[]   = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
+            if ($i === 15) {
+                $params[] = 'test.email@email.com';
+            } else {
+                $params[] = $faker->unique()->email;
+            }
+            $params[] = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
         }
         $insertSQL = rtrim($insertSQL, ", \n");
         self::executeSQL($insertSQL, $params);
@@ -267,6 +271,10 @@ final class RepositoryTest extends TestCase
             'BETWEEN' => [
                 ['@operator' => 'BETWEEN', 'id' => [23, 25]],
                 [23, 24, 25],
+            ],
+            'LIKE' => [
+                ['@operator' => 'LIKE', 'email' => 'test.email%'],
+                [15],
             ],
         ];
     }

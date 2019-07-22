@@ -23,7 +23,7 @@ interface Parameter
     /**
      * List of possible operators that can be used
      */
-    public const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'BETWEEN'];
+    public const OPERATORS = ['=', '<>', '<=', '>=', '<', '>', 'LIKE', 'BETWEEN'];
 
     /**
      * Converts condition parameters to be used to filter the result
