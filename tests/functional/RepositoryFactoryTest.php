@@ -8,6 +8,7 @@ use Phalcon\Annotations\Adapter\Memory as MemoryAdapter;
 use RuntimeException;
 use TZachi\PhalconRepository\Repository;
 use TZachi\PhalconRepository\RepositoryFactory;
+use TZachi\PhalconRepository\Resolver\Parameter as ParameterResolver;
 use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
 use TZachi\PhalconRepository\Tests\Mock\Model\Company;
 use TZachi\PhalconRepository\Tests\Mock\Model\CompanyAnnotationAbsent;
@@ -25,9 +26,9 @@ final class RepositoryFactoryTest extends TestCase
     private $annotations;
 
     /**
-     * @var QueryParameterResolver
+     * @var ParameterResolver
      */
-    private $queryParameterResolver;
+    private $parameterResolver;
 
     /**
      * @var RepositoryFactory
@@ -39,9 +40,9 @@ final class RepositoryFactoryTest extends TestCase
      */
     public function createDependencies(): void
     {
-        $this->annotations            = new MemoryAdapter();
-        $this->queryParameterResolver = new QueryParameterResolver();
-        $this->factory                = new RepositoryFactory($this->annotations, $this->queryParameterResolver);
+        $this->annotations       = new MemoryAdapter();
+        $this->parameterResolver = new QueryParameterResolver();
+        $this->factory           = new RepositoryFactory($this->annotations, $this->parameterResolver);
     }
 
     /**

@@ -8,6 +8,7 @@ use Faker\Factory;
 use Phalcon\Mvc\Model\Resultset\Simple as SimpleResultset;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
+use TZachi\PhalconRepository\Resolver\Parameter;
 use TZachi\PhalconRepository\Resolver\QueryParameter;
 use TZachi\PhalconRepository\Tests\Mock\Model\Payment;
 use TZachi\PhalconRepository\Tests\Mock\Model\User;
@@ -17,6 +18,7 @@ use function current;
 use function next;
 use function range;
 use function reset;
+use function rtrim;
 
 /**
  * @coversDefaultClass Repository
@@ -55,28 +57,58 @@ final class RepositoryTest extends TestCase
 
         $faker = Factory::create();
 
-        // Seed users table
+        // Seed users table. Done with raw sql for a quicker insert
+        $insertSQL = "INSERT INTO `users` (`id`, `name`, `email`, `created_at`) VALUES \n";
+        $params    = [];
         for ($i = 1; $i <= 30; $i++) {
-            $user            = new User();
-            $user->id        = $i;
-            $user->name      = $faker->unique()->name;
-            $user->email     = $faker->unique()->email;
-            $user->createdAt = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
-            $user->save();
+            $insertSQL .= "  (?, ?, ?, ?), \n";
+            $params[]   = $i;
+            $params[]   = $faker->unique()->name;
+            if ($i === 15) {
+                $params[] = 'test.email@email.com';
+            } else {
+                $params[] = $faker->unique()->email;
+            }
+            $params[] = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
+        }
+        $insertSQL = rtrim($insertSQL, ", \n");
+        self::executeSQL($insertSQL, $params);
 
-            self::$users[$i] = $user;
+        /**
+         * @var SimpleResultset $resultSet
+         */
+        $resultSet   = User::find();
+        self::$users = [];
+        foreach ($resultSet as $user) {
+            /**
+             * @var User $user
+             */
+            self::$users[$user->id] = $user;
         }
 
-        // Seed payments table
+        // Seed payments table. Done with raw sql for quicker insert
+        $insertSQL = "INSERT INTO `payments` (`id`, `value`, `count`, `created_at`) VALUES \n";
+        $params    = [];
         for ($i = 1; $i < 10; $i++) {
-            $payment            = new Payment();
-            $payment->id        = $i;
-            $payment->value     = 1.15 * $i;
-            $payment->count     = $i % 5;
-            $payment->createdAt = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
-            $payment->save();
+            $insertSQL .= "  (?, ?, ?, ?), \n";
+            $params[]   = $i;
+            $params[]   = 1.15 * $i;
+            $params[]   = $i % 5;
+            $params[]   = $faker->dateTimeBetween('-1 month')->format('Y-m-d H:i:s');
+        }
+        $insertSQL = rtrim($insertSQL, ", \n");
+        self::executeSQL($insertSQL, $params);
 
-            self::$payments[$i] = $payment;
+        /**
+         * @var SimpleResultset $resultSet
+         */
+        $resultSet      = Payment::find();
+        self::$payments = [];
+        foreach ($resultSet as $payment) {
+            /**
+             * @var Payment $payment
+             */
+            self::$payments[$payment->id] = $payment;
         }
     }
 
@@ -135,7 +167,7 @@ final class RepositoryTest extends TestCase
     public function findFirstWhereShouldReturnModelThatMatchesCondition(): void
     {
         $conditions = [
-            '@type' => QueryParameter::TYPE_OR,
+            '@type' => Parameter::TYPE_OR,
             'name' => self::$users[26]->name,
             'email' => self::$users[28]->email,
         ];
@@ -161,7 +193,7 @@ final class RepositoryTest extends TestCase
     public function findFirstWhereShouldReturnNullWhenConditionDoesNotMatchAnyRows(): void
     {
         $conditions = [
-            '@type' => QueryParameter::TYPE_AND,
+            '@type' => Parameter::TYPE_AND,
             'name' => self::$users[26]->name, // Switched name with email
             'email' => self::$users[28]->email,
         ];
@@ -186,12 +218,75 @@ final class RepositoryTest extends TestCase
 
     /**
      * @test
+     * @dataProvider provideOperatorConditionAndExpectedResult
+     *
+     * @param int[]   $expectedUserIds
+     * @param mixed[] $where
      */
-    public function findWhereShouldReturnCorrectResultSetThatMatchesCondition(): void
+    public function findWhereShouldReturnResultSetThatMatchesOperatorCondition(
+        array $where,
+        array $expectedUserIds
+    ): void {
+        $this->compareResultSet($this->userRepository->findWhere($where), $this->getUsersSlice($expectedUserIds));
+    }
+
+    /**
+     * @return mixed[]
+     */
+    public function provideOperatorConditionAndExpectedResult(): array
+    {
+        return [
+            'IN' => [
+                ['@operator' => '=', 'id' => [1, 2, 3]],
+                [1, 2, 3],
+            ],
+            'NOT IN' => [
+                ['@operator' => '<>', 'id' => range(11, 30)],
+                range(1, 10),
+            ],
+            '=' => [
+                ['@operator' => '=', 'id' => 1],
+                [1],
+            ],
+            '<>' => [
+                ['@operator' => '<>', 'id' => 1],
+                range(2, 30),
+            ],
+            '<=' => [
+                ['@operator' => '<=', 'id' => 3],
+                [1, 2, 3],
+            ],
+            '>=' => [
+                ['@operator' => '>=', 'id' => 28],
+                [28, 29, 30],
+            ],
+            '<' => [
+                ['@operator' => '<', 'id' => 2],
+                [1],
+            ],
+            '>' => [
+                ['@operator' => '>', 'id' => 29],
+                [30],
+            ],
+            'BETWEEN' => [
+                ['@operator' => 'BETWEEN', 'id' => [23, 25]],
+                [23, 24, 25],
+            ],
+            'LIKE' => [
+                ['@operator' => 'LIKE', 'email' => 'test.email%'],
+                [15],
+            ],
+        ];
+    }
+
+    /**
+     * @test
+     */
+    public function findWhereShouldReturnCorrectResultSetThatMatchesConditionOrderAndLimit(): void
     {
         $resultSet = $this->userRepository->findWhere(
             [
-                '@type' => QueryParameter::TYPE_OR,
+                '@type' => Parameter::TYPE_OR,
                 [
                     '@operator' => 'BETWEEN',
                     'id' => [16, 21],

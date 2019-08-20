@@ -11,7 +11,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use TZachi\PhalconRepository\ModelWrapper;
 use TZachi\PhalconRepository\Repository;
-use TZachi\PhalconRepository\Resolver\QueryParameter;
+use TZachi\PhalconRepository\Resolver\Parameter as ParameterResolver;
 
 /**
  * @coversDefaultClass Repository
@@ -24,9 +24,9 @@ final class RepositoryTest extends TestCase
     private $modelWrapper;
 
     /**
-     * @var QueryParameter|MockObject
+     * @var ParameterResolver|MockObject
      */
-    private $queryParameterResolver;
+    private $parameterResolver;
 
     /**
      * @var Repository
@@ -38,10 +38,18 @@ final class RepositoryTest extends TestCase
      */
     public function setUpDependencies(): void
     {
-        $this->modelWrapper           = $this->createMock(ModelWrapper::class);
-        $this->queryParameterResolver = $this->createMock(QueryParameter::class);
+        $this->modelWrapper      = $this->createMock(ModelWrapper::class);
+        $this->parameterResolver = $this->createMock(ParameterResolver::class);
 
-        $this->repository = new Repository($this->modelWrapper, $this->queryParameterResolver);
+        $this->repository = new Repository($this->modelWrapper, $this->parameterResolver);
+    }
+
+    /**
+     * @test
+     */
+    public function getParameterResolverShouldReturnInjectedParameter(): void
+    {
+        self::assertSame($this->parameterResolver, $this->repository->getParameterResolver());
     }
 
     /**
@@ -57,12 +65,12 @@ final class RepositoryTest extends TestCase
             'order' => '[field] ASC',
         ];
 
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('where')
             ->with(self::identicalTo($where))
             ->willReturn(['conditions' => '[field] = ?0', 'bind' => ['x']]);
 
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('orderBy')
             ->with(self::identicalTo($orderBy))
             ->willReturn(['order' => '[field] ASC']);
@@ -187,43 +195,103 @@ final class RepositoryTest extends TestCase
      */
     public function findWhereShouldCombineParametersAndReturnSimpleResultset(): void
     {
-        $where    = ['field' => 'x'];
-        $orderBy  = ['a'];
-        $limit    = 10;
-        $offset   = 5;
-        $expected = [
-            'conditions' => '[field] = ?0',
-            'bind' => ['x'],
-            'order' => '[field] ASC',
-            'limit' => 10,
-            'offset' => 5,
-        ];
+        /**
+         * @var SimpleResultset|MockObject $resultSet
+         */
+        $resultSet   = $this->createMock(SimpleResultset::class);
+        $this->setUpFindWhere(
+            $where   = ['field' => 'x'],
+            ['conditions' => '[field] = ?0', 'bind' => ['x']],
+            $orderBy = ['a'],
+            ['order' => '[field] ASC'],
+            $limit   = 10,
+            $offset  = 5,
+            ['limit' => 10, 'offset' => 5],
+            [
+                'conditions' => '[field] = ?0',
+                'bind' => ['x'],
+                'order' => '[field] ASC',
+                'limit' => 10,
+                'offset' => 5,
+            ],
+            $resultSet
+        );
 
-        $this->queryParameterResolver->expects(self::once())
+        self::assertSame($resultSet, $this->repository->findWhere($where, $orderBy, $limit, $offset));
+    }
+
+    /**
+     * @test
+     */
+    public function findWhereShouldCombineDefaultParameters(): void
+    {
+        /**
+         * @var SimpleResultset|MockObject $resultSet
+         */
+        $resultSet = $this->createMock(SimpleResultset::class);
+        $this->setUpFindWhere([], [], [], [], 0, 0, [], [], $resultSet);
+
+        $this->repository->findWhere();
+    }
+
+    /**
+     * @param mixed[]                    $where
+     * @param mixed[]                    $whereReturn
+     * @param string[]                   $orderBy
+     * @param string[]                   $orderByReturn
+     * @param int[]                      $limitReturn
+     * @param mixed[]                    $expectedFindArguments
+     * @param SimpleResultset|MockObject $resultSet
+     */
+    private function setUpFindWhere(
+        array $where,
+        array $whereReturn,
+        array $orderBy,
+        array $orderByReturn,
+        int $limit,
+        int $offset,
+        array $limitReturn,
+        array $expectedFindArguments,
+        $resultSet
+    ): void {
+        $this->parameterResolver->expects(self::once())
             ->method('where')
             ->with(self::identicalTo($where))
-            ->willReturn(['conditions' => '[field] = ?0', 'bind' => ['x']]);
+            ->willReturn($whereReturn);
 
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('orderBy')
             ->with(self::identicalTo($orderBy))
-            ->willReturn(['order' => '[field] ASC']);
+            ->willReturn($orderByReturn);
 
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('limit')
-            ->with(self::identicalTo(10), self::identicalTo(5))
-            ->willReturn(['limit' => 10, 'offset' => 5]);
+            ->with(self::identicalTo($limit), self::identicalTo($offset))
+            ->willReturn($limitReturn);
+
+        $this->modelWrapper->expects(self::once())
+            ->method('find')
+            ->with(self::identicalTo($expectedFindArguments))
+            ->willReturn($resultSet);
+    }
+
+    /**
+     * @test
+     */
+    public function findByShouldUseDefaultValues(): void
+    {
+        $repository = $this->createRepositoryMock(['findWhere']);
 
         /**
          * @var SimpleResultset|MockObject $resultSet
          */
         $resultSet = $this->createMock(SimpleResultset::class);
-        $this->modelWrapper->expects(self::once())
-            ->method('find')
-            ->with(self::identicalTo($expected))
+        $repository->expects(self::once())
+            ->method('findWhere')
+            ->with(self::identicalTo(['field' => 1]), self::identicalTo([]), self::identicalTo(0), self::identicalTo(0))
             ->willReturn($resultSet);
 
-        self::assertSame($resultSet, $this->repository->findWhere($where, $orderBy, $limit, $offset));
+        $repository->findBy('field', 1);
     }
 
     /**
@@ -291,7 +359,7 @@ final class RepositoryTest extends TestCase
             'bind' => [1],
         ];
 
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('where')
             ->with(['field' => 1])
             ->willReturn($expected);
@@ -395,7 +463,7 @@ final class RepositoryTest extends TestCase
     {
         $constructorArgs = [
             $this->modelWrapper,
-            $this->queryParameterResolver,
+            $this->parameterResolver,
         ];
         if ($customId !== null) {
             $constructorArgs[] = $customId;
@@ -425,11 +493,11 @@ final class RepositoryTest extends TestCase
             'bind' => [1],
         ];
 
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('where')
             ->with(self::identicalTo($where))
             ->willReturn(['conditions' => '[field] = ?0', 'bind' => [1]]);
-        $this->queryParameterResolver->expects(self::once())
+        $this->parameterResolver->expects(self::once())
             ->method('column')
             ->with(self::identicalTo($column))
             ->willReturn(['column' => $column]);

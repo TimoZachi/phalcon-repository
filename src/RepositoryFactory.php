@@ -6,6 +6,7 @@ namespace TZachi\PhalconRepository;
 
 use Phalcon\Annotations\AdapterInterface as AnnotationsAdapterInterface;
 use RuntimeException;
+use TZachi\PhalconRepository\Resolver\Parameter as ParameterResolver;
 use TZachi\PhalconRepository\Resolver\QueryParameter as QueryParameterResolver;
 use function class_exists;
 
@@ -19,9 +20,9 @@ class RepositoryFactory
     protected $annotations;
 
     /**
-     * @var QueryParameterResolver
+     * @var ParameterResolver
      */
-    protected $queryParameterResolver;
+    protected $parameterResolver;
 
     /**
      * @var Repository[]
@@ -30,10 +31,10 @@ class RepositoryFactory
 
     public function __construct(
         AnnotationsAdapterInterface $annotations,
-        ?QueryParameterResolver $queryParameterResolver = null
+        ?ParameterResolver $parameterResolver = null
     ) {
-        $this->annotations            = $annotations;
-        $this->queryParameterResolver = $queryParameterResolver ?? new QueryParameterResolver();
+        $this->annotations       = $annotations;
+        $this->parameterResolver = $parameterResolver ?? new QueryParameterResolver();
     }
 
     /**
@@ -50,7 +51,7 @@ class RepositoryFactory
     }
 
     /**
-     * Creates a new repository for a specific model
+     * Creates a new repository related to a specific model
      *
      * @param string $modelName The class name of the phalcon model
      */
@@ -66,6 +67,6 @@ class RepositoryFactory
             }
         }
 
-        return new $repositoryClassName(new ModelWrapper($modelName), $this->queryParameterResolver);
+        return new $repositoryClassName(new ModelWrapper($modelName), $this->parameterResolver);
     }
 }

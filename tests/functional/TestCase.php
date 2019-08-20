@@ -13,9 +13,7 @@ use Phalcon\Mvc\Model\Manager as ModelsManager;
 use Phalcon\Mvc\Model\MetaData\Memory;
 use Phalcon\Mvc\Model\MetaData\Strategy\Annotations as AnnotationsStrategy;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
-use RuntimeException;
 use function dirname;
-use function sprintf;
 
 /**
  * Base test case for functional tests
@@ -72,13 +70,10 @@ abstract class TestCase extends PHPUnitTestCase
 
     protected static function resetModelsMetadata(): void
     {
-        if (self::$sharedDi === null) {
-            throw new RuntimeException(
-                sprintf('Please call %s::setUpDi before calling %s', self::class, __METHOD__)
-            );
-        }
+        self::setUpDi();
 
         /**
+         * @var Di self::$sharedDi
          * @var Memory $metadata
          */
         $metadata = self::$sharedDi->get('modelsMetadata');
@@ -87,18 +82,30 @@ abstract class TestCase extends PHPUnitTestCase
 
     protected static function resetTable(string $tableName): bool
     {
-        if (self::$sharedConnection === null) {
-            throw new RuntimeException(
-                sprintf('Please call %s::setUpDi before calling %s', self::class, __METHOD__)
-            );
-        }
+        self::setUpDi();
 
+        /**
+         * @var PdoDbAdapter self::$sharedConnection
+         */
         self::$sharedConnection->dropTable($tableName);
 
         return self::$sharedConnection->createTable(
             $tableName,
             null,
-            require dirname(__DIR__) . '/migrations/' . $tableName . '.php'
+            require dirname(__DIR__) . '/migration/' . $tableName . '.php'
         );
+    }
+
+    /**
+     * @param mixed[] $params
+     */
+    protected static function executeSQL(string $sql, array $params): bool
+    {
+        self::setUpDi();
+
+        /**
+         * @var PdoDbAdapter self::$sharedConnection
+         */
+        return self::$sharedConnection->execute($sql, $params);
     }
 }

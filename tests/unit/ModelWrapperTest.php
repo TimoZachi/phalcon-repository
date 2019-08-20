@@ -28,7 +28,7 @@ class ModelWrapperTest extends TestCase
 
     /**
      * @test
-     * @dataProvider methodNamesData
+     * @dataProvider provideMethodParameters
      *
      * @param mixed[] $args
      * @param mixed   $returnValue
@@ -47,7 +47,7 @@ class ModelWrapperTest extends TestCase
     /**
      * @return mixed[]
      */
-    public function methodNamesData(): array
+    public function provideMethodParameters(): array
     {
         $defaultArgs = [
             [

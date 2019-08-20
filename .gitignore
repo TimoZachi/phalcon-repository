@@ -4,5 +4,7 @@ coverage/
 composer.lock
 phpunit.xml
 phpcs.xml
+infection.json
+infection.txt
 .phpcs.cache
 .phpunit.result.cache

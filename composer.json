@@ -41,7 +41,8 @@
     "psr-4": {
       "TZachi\\PhalconRepository\\Tests\\Unit\\": "tests/unit",
       "TZachi\\PhalconRepository\\Tests\\Functional\\": "tests/functional",
-      "TZachi\\PhalconRepository\\Tests\\Mock\\": "tests/mock"
+      "TZachi\\PhalconRepository\\Tests\\Mock\\": "tests/mock",
+      "TZachi\\PhalconRepository\\Tests\\Benchmark\\": "tests/benchmark"
     }
   },
   "extra": {

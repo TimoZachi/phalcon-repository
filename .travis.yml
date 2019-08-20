@@ -40,6 +40,20 @@ jobs:
         - php ocular.phar code-coverage:upload --format=php-clover ./clover.xml
 
     - stage: Analyse
+      name: "Benchmark analysis"
+      before_script:
+        - make dev/phpbench.phar
+      script:
+        - ./dev/phpbench.phar run --progress=dots --report=aggregate
+
+    - stage: Analyse
+      name: "Mutation testing"
+      before_script:
+        - make dev/infection.phar
+      script:
+        - ./dev/infection.phar --show-mutations --test-framework-options="--testsuite=Unit" --threads=$(nproc) --min-msi=90 --min-covered-msi=90
+
+    - stage: Analyse
       name: "Code style analysis"
       script:
         - ./vendor/bin/phpcs

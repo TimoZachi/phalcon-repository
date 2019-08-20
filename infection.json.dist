@@ -1,0 +1,13 @@
+{
+    "source": {
+        "directories": ["src"]
+    },
+    "timeout": 5,
+    "logs": {
+        "text": "infection.txt"
+    },
+    "mutators": {
+        "@default": true,
+        "ProtectedVisibility": false
+    }
+}
